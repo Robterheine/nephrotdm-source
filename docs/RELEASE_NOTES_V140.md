@@ -54,6 +54,10 @@ steady state sums geometrically. One steady-state concentration costs about 0.4 
 - `ui.js`: a dose-explorer result is reset whenever the fit it was computed from is replaced (new forecast, drug switch, session import, cleared session); it used to stay on screen under the next patient's fit, for all three drugs. Decided by the roles of clinical pharmacologist (a candidate-dose result is meaningful only against its own fit) and interface designer (reset silently to the neutral note, no extra banner; an input edit alone keeps it, the existing "inputs changed" banner covers that). Test: `explorer: a dose-explorer result never outlives the fit ...`, red when the reset is removed.
 - `parallel.js`, `build.mjs`, `index.html`: the new files; a test fails if a list loses `src/everolimus.js` (workers would silently fall back to one thread).
 
+## Publication (3 October 2026)
+
+The app is published at https://robterheine.github.io/nephrotdm/ (repo `Robterheine/nephrotdm`, only `index.html`) and the source at `Robterheine/nephrotdm-source` (MIT), the same two-repo layout as `complementtdm`. The earlier MPA-only page and repository (`mpatdm`, 1.1.1) were deleted the same day; its URL no longer resolves. About carries a link to the source repository. The author-query drafts (`docs/AUTHOR_QUERY*.md`) are not part of the published source. Verified on the live page: an everolimus fit on a worker pool, the About link, and autosave with the restore offer (possible over https, not in the local file view).
+
 ## Beginner test and its fixes (3 October 2026)
 
 A beginner walkthrough of the built page (all three drugs, all dialogs, typical mistakes, phone width) found two bugs and five smaller inconsistencies; all are fixed, each with a test that failed first and goes red when the fix is undone.
