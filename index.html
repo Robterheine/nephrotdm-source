@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NephroTDM</title>
+<!-- Built single-file artifact: nephrotdm.html (build: __BUILD__) -->
+<link rel="stylesheet" href="src/app.css">
+</head>
+<body>
+
+<header class="app no-print">
+  <div>
+    <h1><span id="appName">NephroTDM</span> <span class="appver" id="titleVersion" title="Application version"></span></h1>
+    <div class="sub" id="appSub">Model-informed therapeutic drug monitoring for kidney transplantation and nephrology. Choose a drug, enter the dosing and any measured concentrations, and the app estimates the patient’s exposure with its uncertainty and shows what a different dose would do. Everything runs locally in your browser: nothing you enter is sent or processed online. The only copy is an autosave in this browser.</div>
+  </div>
+  <div class="actions">
+    <button id="btnGettingStarted" title="A short, step-by-step walkthrough for first-time use, opened in its own window">Getting started</button>
+    <button id="btnBackground" title="Why therapeutic drug monitoring, reference values, model-based estimation and sampling advice for the selected drug">Background</button>
+    <button id="btnAbout" title="Version, model documentation, contact and research-use disclaimer">About</button>
+    <button id="btnPrint" class="primary" title="Generate an A4 report of this patient, dosing schedule, samples, AUC estimate and advice, with prepared-by and signature lines">Print report</button>
+    <button id="btnExport" title="Download this session as a JSON file (pseudonym only, no identifiers required)">Export session</button>
+    <button id="btnImport" title="Restore a previously exported session">Import session</button>
+    <button id="btnClearSession" class="quiet" title="Delete the autosaved copy kept in this browser and empty this page. Exported session files are not affected.">Clear session</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+  </div>
+</header>
+
+<main class="layout">
+
+  <div class="restore-bar no-print" id="restoreBar" role="status" hidden>
+    <span id="restoreText"></span>
+    <span class="restore-actions">
+      <button class="primary" id="restoreYes" title="Load the autosaved doses and measurements back into the form">Restore</button>
+      <button id="restoreNo" title="Discard the autosaved session and start empty">Discard</button>
+    </span>
+  </div>
+
+  <div class="note no-print" id="modelIntegratedNote" hidden>
+    <b>New:</b> tacrolimus for adult kidney transplant recipients (Størset 2014) now sits next to mycophenolic acid, and the app is called NephroTDM. Choose the drug in card 1. Each model’s parameters, scope and limits are in <b>About</b>.
+    <button class="linklike" id="modelNoteDismiss" style="margin-left:8px">dismiss</button>
+  </div>
+
+  <div class="stepper no-print" id="stepper">
+    <span class="step" data-step="wt"><i>1</i> Patient &amp; covariates</span>
+    <span class="step" data-step="dose"><i>2</i> Dosing &amp; samples</span>
+    <span class="step" data-step="run"><i>3</i> Forecast</span>
+    <span class="step" data-step="explore"><i>4</i> Explore dose (optional)</span>
+    <button class="linklike" id="stepperDismiss" title="Hide this guide">dismiss</button>
+  </div>
+
+  <!-- ============ 1 · PATIENT & COVARIATES ============ -->
+  <div class="card sessionbar" id="patientCard">
+    <h2><span class="stepnum">1</span> Patient &amp; covariates</h2>
+    <div class="sess-row">
+      <div class="sess-field sess-drug">
+        <label class="f" for="pt-drug">Drug / PK model</label>
+        <select id="pt-drug" title="Which drug's population PK model to use for this patient">
+          <option value="mpa">Mycophenolic acid</option>
+          <option value="tac">Tacrolimus (adult kidney)</option>
+          <option value="evr">Everolimus (adult kidney)</option>
+        </select>
+      </div>
+      <div class="sess-field">
+        <div class="lbl-help">
+          <label class="f" for="pt-wt">Weight (kg)</label>
+          <button type="button" class="info" data-help="wt" aria-label="What is the weight field for?" aria-expanded="false" title="Body weight in kg">ⓘ</button>
+        </div>
+        <input type="number" id="pt-wt" min="25" max="300" step="0.5" placeholder="e.g. 70" title="Body weight in kg">
+      </div>
+      <div class="sess-field" id="ageRow" style="display:none">
+        <div class="lbl-help">
+          <label class="f" for="pt-age">Age (years)</label>
+          <button type="button" class="info" data-help="age" aria-label="What is the age field for?" aria-expanded="false" title="Age in years">ⓘ</button>
+        </div>
+        <input type="number" id="pt-age" min="1" max="100" step="1" placeholder="e.g. 45" title="Age in years">
+      </div>
+      <div class="sess-field" id="renalRow" style="display:none">
+        <div class="lbl-help">
+          <label class="f" for="pt-renal">Renal function</label>
+          <button type="button" class="info" data-help="renal" aria-label="What is the renal function field for?" aria-expanded="false" title="Renal function, if the model uses it">ⓘ</button>
+        </div>
+        <input type="text" id="pt-renal" placeholder="e.g. eGFR 70 mL/min" title="Renal function, if the model uses it">
+      </div>
+      <div class="sess-field" id="extraCovRow" style="display:none">
+        <div class="lbl-help">
+          <label class="f" for="pt-extracov">Other covariate</label>
+          <button type="button" class="info" data-help="extracov" aria-label="What is the other covariate field for?" aria-expanded="false" title="Other model covariates, if any">ⓘ</button>
+        </div>
+        <input type="text" id="pt-extracov" placeholder="e.g. as applicable" title="Other model covariates, if any">
+      </div>
+      <!-- Host for covariate rows generated from the model spec (model-driven UI) -->
+      <div id="generatedCovariates" style="display:contents"></div>
+      <div class="sess-field sess-target">
+        <details class="sess-fold" id="windowFold">
+          <summary title="Therapeutic window used for probability-in-window. Fold open to change it.">
+            <span class="fold-lbl">Therapeutic window: AUC₀–12h</span>
+            <span class="fold-val" id="windowFoldVal">–</span>
+            <span class="fold-edit">change</span>
+          </summary>
+          <div class="legend-note">The target is the AUC over a <b>12-hour dosing interval at steady state</b> (AUC₀–12h). Regimens with another interval are compared as their 12-hour equivalent: AUC₁₂ = AUC₀–ₓ × 12/ₓ.</div>
+          <div class="lbl-help">
+            <label class="f" for="pt-winlo">Lower bound AUC₀–12h (mg·h/L)</label>
+            <button type="button" class="info" data-help="window" aria-label="What is the therapeutic window?" aria-expanded="false" title="Lower and upper bound for therapeutic AUC0–12h">ⓘ</button>
+          </div>
+          <input type="number" id="pt-winlo" min="0.1" max="500" step="any" title="Lower bound of the therapeutic AUC0–12h window (mg·h/L)">
+          <label class="f" for="pt-winhi" style="margin-top:6px">Upper bound AUC₀–12h (mg·h/L)</label>
+          <input type="number" id="pt-winhi" min="0.1" max="5000" step="any" title="Upper bound of the therapeutic AUC0–12h window (mg·h/L)">
+          <div class="legend-note" id="windowHint"></div>
+        </details>
+      </div>
+      <div class="sess-field sess-target" id="troughTargetRow" style="display:none">
+        <details class="sess-fold" id="troughFold">
+          <summary title="Therapeutic trough window used for probability-in-window. Fold open to change it.">
+            <span class="fold-lbl">Therapeutic window: trough</span>
+            <span class="fold-val" id="troughFoldVal">–</span>
+            <span class="fold-edit">change</span>
+          </summary>
+          <div class="legend-note">Both windows are clinical inputs from your protocol (see the background dialog for the IATDMCT consensus). Leave a window empty and the app reports intervals without probabilities.</div>
+          <label class="f" for="pt-tlo">Lower bound trough (µg/L)</label>
+          <input type="number" id="pt-tlo" min="0" step="any" title="Lower bound of the therapeutic trough window (µg/L)">
+          <label class="f" for="pt-thi" style="margin-top:6px">Upper bound trough (µg/L)</label>
+          <input type="number" id="pt-thi" min="0" step="any" title="Upper bound of the therapeutic trough window (µg/L)">
+        </details>
+      </div>
+    </div>
+    <div class="legend-note" id="drugHint" style="margin:6px 0 0"></div>
+    <div class="pending-notice" id="pendingNotice" hidden></div>
+    <div class="row2" style="margin-top:4px">
+      <div>
+        <label class="f" for="pt-code">Patient ID/name (optional)</label>
+        <input type="text" id="pt-code" placeholder="e.g. ID001" autocomplete="off">
+      </div>
+      <div>
+        <div class="sess-field" id="formRow">
+          <div class="lbl-help">
+            <label class="f" for="pt-form">Formulation</label>
+            <button type="button" class="info" data-help="form" aria-label="About the formulation covariate" aria-expanded="false" title="The model covariate: switches absorption and the dose conversion">ⓘ</button>
+          </div>
+          <select id="pt-form" title="The formulation is this model’s covariate: it switches the absorption rate, the lag-time structure and the dose conversion (×0.739 MMF, ×0.936 EC-MPS to MPA mg). Doses are entered as prescribed, in product mg.">
+            <option value="mmf">MMF (mycophenolate mofetil)</option>
+            <option value="ecmps">EC-MPS (enteric-coated mycophenolate sodium)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2 · DOSING & SAMPLES ============ -->
+  <div class="card" id="chartCard">
+    <h2><span class="stepnum">2</span> Dosing schedule &amp; measured concentrations</h2>
+
+    <div class="seg no-print" id="modeSeg" title="Choose how the dosing schedule is entered">
+      <label class="seg-opt" title="Enter each dose as a dated timeline">
+        <input type="radio" name="schedMode" value="full" checked> Full schedule (history)</label>
+      <label class="seg-opt" title="Patient at steady state on a fixed maintenance dose + interval">
+        <input type="radio" name="schedMode" value="ss"> Steady state (dose + interval)</label>
+    </div>
+
+    <div id="fullDoseUI">
+      <div class="tbl-wrap"><table class="data" id="doseTable"></table></div>
+      <form class="inline no-print" id="doseForm" novalidate>
+        <div class="row3" style="margin-top:8px">
+          <div><label class="f" for="dose-dt">Date &amp; time</label><input type="datetime-local" id="dose-dt" title="Scheduled date and time of the administration"></div>
+          <div><label class="f" for="dose-amt" id="doseAmtLbl">Dose (mg)</label><input type="number" id="dose-amt" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Dose in mg as prescribed"></div>
+          <div id="dosePredWrap" style="display:none"><label class="f" for="dose-pred">Prednisolone (mg/day), if changed</label><input type="number" id="dose-pred" min="0" step="any" placeholder="patient value" title="Leave empty to use the prednisolone dose of the patient card. Enter a value only if the steroid dose was different on the day of this administration."></div>
+          <div style="align-self:end"><button class="primary" type="submit" id="doseAdd" style="width:100%" title="Add this dose to the schedule">Add dose</button></div>
+        </div>
+      </form>
+    </div>
+
+    <div id="ssDoseUI" style="display:none">
+      <div class="row3" style="margin-top:8px">
+        <div><label class="f" for="ss-dose" id="ssDoseLbl">Dose (mg)</label><input type="number" id="ss-dose" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Maintenance dose per administration, as prescribed"></div>
+        <div><label class="f" for="ss-interval">Interval (hours)</label><input type="number" id="ss-interval" min="1" max="48" step="1" placeholder="e.g. 12" title="Dosing interval in hours"></div>
+        <div><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
+      </div>
+      <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”.</div>
+    </div>
+
+    <h2 class="sub-h">Measured concentrations <span class="hint" id="sampleHint"></span> <span style="float:right"><button class="linklike" id="tplClear" title="Remove all doses and measurements">clear all</button></span></h2>
+    <div class="note no-print" id="tacDoseNote" hidden>Immediate-release tacrolimus, twice daily (Prograf-type capsules). Prolonged-release products (once daily) are not covered by this model.</div>
+    <div class="note warn no-print" id="ecmpsSampleNote" hidden>EC-MPS: absorption is delayed and highly variable, the source model’s own conclusion is that sparse limited sampling is expected to be unreliable for EC-MPS. Prefer more samples spread across the dosing interval (e.g. 1.5, 2, 4, 6, 8 h), and treat trough-only results with particular caution.</div>
+    <div class="tbl-wrap"><table class="data" id="obsTable"></table></div>
+    <form class="inline no-print" id="obsForm" novalidate>
+      <div class="row3" style="margin-top:8px">          <div><label class="f" for="obs-dt">Date &amp; time</label><input type="datetime-local" id="obs-dt" title="Time the blood sample was drawn"></div>
+        <div><label class="f" for="obs-offset">or hours after last dose</label>
+          <select id="obs-offset" title="Fill the sample time as an offset from the last dose">
+            <option value="">(none)</option>
+            <option value="0.33">+20 min</option>
+            <option value="1">+1 h</option>
+            <option value="1.5">+1.5 h</option>
+            <option value="2">+2 h</option>
+            <option value="3">+3 h</option>
+            <option value="4">+4 h</option>
+            <option value="6">+6 h</option>
+            <option value="12">+12 h (trough if q12h)</option>
+          </select>
+        </div>
+        <div><label class="f" for="obs-val" id="obsValLbl">Concentration (mg/L)</label><input type="number" id="obs-val" min="0.001" max="1000" step="any" title="Measured serum concentration (mg/L). A result reported below the assay's limit of quantification cannot be used: omit it."></div>
+        <div id="obsHctWrap" style="display:none"><label class="f" for="obs-hct">Haematocrit (L/L)</label><input type="number" id="obs-hct" min="0.1" max="0.65" step="any" placeholder="e.g. 0.33" title="Haematocrit measured with this sample, as a fraction (0.33, not 33 %). Empty = the patient-card value."></div>
+        <div style="align-self:end;display:flex;gap:8px;align-items:center">
+          <button class="primary" type="submit" id="obsAdd" style="flex:1" title="Add this measurement to the fit">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ 3 · FORECAST & RESULTS ============ -->
+  <div class="card" id="resultsCard">
+    <h2><span class="stepnum">3</span> Forecast</h2>
+    <div class="stale-banner" id="staleBanner">Inputs changed. Press “Run forecast” to update.</div>
+    <div id="chartBox">
+      <div class="chart-head no-print">
+        <label class="check chart-log" title="Show the concentration axis on a logarithmic scale">
+          <input type="checkbox" id="logY"> Log scale (y-axis)
+        </label>
+      </div>
+      <div id="chart"></div>
+    </div>
+    <div class="legend-note" id="chartNote"></div>
+
+    <div class="progress-wrap" id="progress">
+      <div class="bar"><div id="progressBar"></div></div>
+      <div class="msg" id="progressMsg"></div>
+      <button type="button" class="linklike no-print" id="btnCancelRun" title="Stop this forecast; no result is produced">Cancel</button>
+    </div>
+
+    <div class="actions-inline no-print" style="margin-top:10px">
+      <button class="primary" id="btnRun" style="flex:1" title="Run the Bayesian individualization and refresh the plot, AUC estimate, trough and advisories">Run forecast</button>
+      <button class="secondary" id="btnDiag" disabled title="Inspect how well the fitted model explains this patient’s samples: observed vs individual prediction, residuals, parameter ranges, shrinkage and MCMC quality. Available after a forecast has run.">Fit diagnostics</button>
+    </div>
+    <div class="run-hint" id="runHint"></div>
+    <details class="help advanced no-print" id="advancedForecast">
+      <summary>Advanced fitting options</summary>
+      <div>
+        <div class="lbl-help">
+          <label class="f" for="pt-recency">Down-weight older samples</label>
+          <button type="button" class="info" data-help="recency" aria-label="What does weighting of older samples do?" aria-expanded="false" title="Optional: give older measurements a larger residual error, so they influence the individual fit less than recent ones. Off by default.">ⓘ</button>
+        </div>
+        <select id="pt-recency" title="Optional: give older measurements a larger residual error, so they influence the individual fit less than recent ones. Off by default.">
+          <option value="off">Off (all samples weighted equally)</option>
+          <option value="low">Low (residual error up to ×1.5 for older samples)</option>
+          <option value="medium">Medium (up to ×2)</option>
+          <option value="high">High (up to ×3)</option>
+        </select>
+        <div class="legend-note" id="recencyHint"></div>
+      </div>
+    </details>
+    <details class="help no-print" id="howto">
+      <summary>How to read these results</summary>
+      <ul id="howtoList"></ul>
+    </details>
+    <div id="fitStatus"></div>
+    <div id="paramBlock"></div>
+    <div id="aucBlock"></div>
+    <div id="troughBlock"></div>
+    <div id="advisoryBlock"></div>
+  </div>
+
+  <!-- ============ 4 · DOSE EXPLORER ============ -->
+  <div class="card" id="regimenCard">
+    <h2><span class="stepnum">4</span> Explore dose
+      <button type="button" class="info" data-help="ivexplore" aria-label="About the dose explorer" aria-expanded="false">ⓘ</button>
+    </h2>
+    <div class="iv-controls no-print">
+      <label class="f" for="iv-amt" id="ivAmtLbl">Dose (mg)</label>
+      <input type="number" id="iv-amt" step="any" title="Dose per administration to evaluate, prefilled with the last dose entered">
+      <label class="f" for="iv-interval">Interval</label>
+      <select id="iv-interval" title="Dosing interval to simulate. AUCs are normalized to a 12-hour equivalent (AUC12 = AUC0-x × 12/x) so they stay comparable with the AUC0-12h therapeutic window.">
+        <option value="12" selected>12 h (twice daily)</option>
+        <option value="24">24 h (once daily)</option>
+      </select>
+      <button class="primary" id="iv-run" title="Evaluate candidate doses using this patient's fitted parameters" disabled>Explore</button>
+      <span class="hint" id="iv-status"></span>
+    </div>
+    <div id="iv-out"><div class="note">Run a forecast in card 3 first. This explorer reuses that fit's own parameters.</div></div>
+  </div>
+
+</main>
+
+<!-- Fit diagnostics dialog -->
+<div class="modal-backdrop" id="diagModal" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="diagTitle">
+    <button class="modal-close" id="diagClose" title="Close">×</button>
+    <h2 id="diagTitle">Fit diagnostics</h2>
+    <div id="diagModalBody"></div>
+  </div>
+</div>
+
+<footer class="app">
+  <div class="credit">NephroTDM v<span id="footerVersion"></span> · model-informed therapeutic drug monitoring, for research use only.<br>
+    Not for independent clinical decision-making without verification.</div>
+</footer>
+
+<div class="modal-backdrop" id="gettingStartedModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gettingStartedTitle">
+    <button class="modal-close" id="gettingStartedClose" title="Close">×</button>
+    <h2 id="gettingStartedTitle">Getting started</h2>
+    <div id="gettingStartedBody"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="backgroundModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="backgroundTitle">
+    <button class="modal-close" id="backgroundClose" title="Close">×</button>
+    <h2 id="backgroundTitle">Background</h2>
+    <div id="backgroundBody"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="aboutModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <button class="modal-close" id="aboutClose" title="Close">×</button>
+    <h2 id="aboutTitle">About this app</h2>
+    <div id="aboutBody"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="reportModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+    <button class="modal-close" id="reportClose" title="Close">×</button>
+    <h2 id="reportTitle">Generate report</h2>
+    <p class="src">The report prints the current patient data, the last <b>run</b> forecast, model findings and the fields below. Both fields are optional and are kept in the session (and in exported session files) until you change them.</p>
+    <label class="f" for="rp-prepared">Prepared by (name, role)</label>
+    <input type="text" id="rp-prepared" placeholder="e.g. J. Researcher, clinical pharmacologist" autocomplete="off"
+      title="Who performed the calculations, printed in the report header and on the signature line">
+    <label class="f" for="rp-advice" style="margin-top:10px">Advice (free text, printed verbatim in the Advice section)</label>
+    <textarea id="rp-advice" rows="5" placeholder="e.g. Continue current regimen; repeat AUC after any dose change."
+      title="Your advice for the treating clinician. The model findings are printed separately above it. The advice itself is yours."></textarea>
+    <div class="actions-inline" style="margin-top:14px;display:flex;gap:8px">
+      <button class="primary" id="rp-generate" style="flex:1" title="Build the report sheet and open the print dialog">Generate report</button>
+      <button class="secondary" id="rp-cancel" title="Close without printing">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="reportSheet" hidden></div>
+<div class="help-pop" id="helpPop" hidden role="tooltip"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="src/version.js"></script>
+<script src="src/model.js"></script>
+<script src="src/tacrolimus.js"></script>
+<script src="src/everolimus.js"></script>
+<script src="src/bayes.js"></script>
+<script src="src/parallel.js"></script>
+<script src="src/chart.js"></script>
+<script src="src/diagnostics.js"></script>
+<script src="src/texts_tac.js"></script>
+<script src="src/texts_evr.js"></script>
+<script src="src/ui.js"></script>
+</body>
+</html>

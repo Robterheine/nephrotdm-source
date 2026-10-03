@@ -1,0 +1,10 @@
+{
+  "_comment": "Golden reference values for the de Winter 2008 implementation (docs/IMPLEMENTATION_PLAN_DEWINTER_2008.md, validation matrix V3/V4). Sources: analytic mass balance (AUC = MPA dose/CL for 12h-periodic absorption; 24h sum for EC-MPS whose absorption is 24h-periodic), the analytic IV bi-exponential, and grid-converged engine values (96-point grid, typical parameters, wt 70). MMF 1000 mg = 739 mg MPA; EC-MPS 720 mg = 674 mg MPA (x0.739 / x0.936).",
+  "ivBolusAucInf": { "dose": 100, "auc": 6.25, "tolerance": 0.02 },
+  "mmf1000AUC12": { "doseMpa": 739, "auc": 46.1875, "toleranceFrac": 0.02 },
+  "ecmps720MorningAUC12": { "doseMpa": 674, "auc": 45.26, "toleranceFrac": 0.02, "note": "morning-dose-anchored window; the 30-60 target refers to morning profiles" },
+  "ecmps720EveningAUC12": { "doseMpa": 674, "auc": 38.95, "toleranceFrac": 0.02, "note": "evening-dose-anchored window; delayed evening absorption lands at clock ~05:00" },
+  "ecmps24hBalance": { "sum": 84.25, "toleranceFrac": 0.02, "note": "morning + evening windows = 2 x dose/CL (exact invariant for 24h-periodic absorption)" },
+  "terminalHalfLifeH": 39.8,
+  "kaHalflifeH": { "mmf": 0.169, "ecmps": 0.231 }
+}

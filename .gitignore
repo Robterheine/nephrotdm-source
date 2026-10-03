@@ -1,0 +1,8 @@
+.DS_Store
+.Rhistory
+node_modules/
+.claude/
+.freebuff/
+~$*
+# the stale 1.1.1 build; the deliverable is nephrotdm.html
+mpa-tdm.html
