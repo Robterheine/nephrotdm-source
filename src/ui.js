@@ -1117,6 +1117,9 @@
       '<p>Developed by <b>Rob ter Heine</b> · Radboudumc, Nijmegen, the Netherlands. For questions or collaboration: <a href="mailto:r.terheine@radboudumc.nl">r.terheine@radboudumc.nl</a></p>' +
       '<p>Research group: <a href="https://www.radboudumc.nl/en/research/research-groups/applied-pharmacometrics" target="_blank" rel="noopener">Radboud Applied Pharmacometrics</a>, Radboudumc, Nijmegen.</p>' +
       '<p>Source code and latest version: <a href="https://github.com/Robterheine/nephrotdm-source" target="_blank" rel="noopener">github.com/Robterheine/nephrotdm-source</a>.</p>';
+    if (ECU.authorPhoto) {
+      h += '<div class="about-photo"><img src="' + ECU.authorPhoto.uri + '" alt="' + esc(ECU.authorPhoto.alt) + '" width="56" height="56"><span>' + esc(ECU.authorPhoto.caption) + '</span></div>';
+    }
     return h;
   }
 

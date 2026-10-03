@@ -78,7 +78,33 @@
       '<li>Liver function, food, adherence and the time since transplantation. None of these is in the model.</li>' +
       '<li>Immunoassay results. Only LC-MS/MS values can be used.</li>' +
       '<li>Results below the limit of quantification. A result reported as “&lt; LLOQ” cannot be used, so omit it.</li>' +
-      '</ul>';
+      '</ul>' + referenceSections();
+  }
+
+  /* About: reference values and practical background, built from the spec so the numbers are the ones the app uses. */
+  function referenceSections() {
+    var sp = spec(), H = ref(), rows = '';
+    sp.windowSets.forEach(function (w) {
+      rows += '<tr><td>' + w.label + (w.id === sp.windowStandard ? ' (the app starts here)' : '') + '</td><td>' + w.trough[0] + '–' + w.trough[1] + '</td><td>none given</td><td>' + w.grade + '</td></tr>';
+    });
+    return '<h3>Reference values for everolimus (adult kidney recipients, twice-daily)</h3>' +
+      '<p>From the IATDMCT second consensus report (Masuda 2025). The windows are starting points that you can change or clear; the Everolimus background dialog has the same sets with a “Use this window” button each. µg/L is the same as ng/mL.</p>' +
+      '<div class="winmatrix-wrap"><table class="data about-tbl"><thead><tr><th>Setting</th><th>Trough (µg/L)</th><th>AUC<sub>0–12h</sub></th><th>Source</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<ul class="about-list">' +
+      '<li><b>No AUC target.</b> The consensus gives trough targets only. It states that the pharmacokinetics are linear and that the trough follows the AUC well, which is why the trough carries the window here and the model-based AUC is an extra. Add an AUC window yourself if your protocol has one.</li>' +
+      '<li><b>Descriptive values, not targets:</b> the consensus table lists a half-life of about 28 h and a dose-normalised AUC24 of 40–120 µg·h/L for kidney recipients on a reduced-exposure CNI. The app does not use them.</li>' +
+      '<li><b>Other indications</b> have other ranges (for cancer the table lists 12–20 µg/L) and are not covered.</li>' +
+      '</ul>' +
+      '<h3>Assay, haematocrit and sampling</h3>' +
+      '<ul class="about-list">' +
+      '<li><b>Assay:</b> whole blood, LC-MS/MS preferred. The consensus states that LC-MS/MS, QMS, ECLIA and ACMIA results are not interchangeable and gives no conversion, so only LC-MS/MS values can be used. It asks for a quantification limit close to 1 µg/L and an imprecision of 10% or less.</li>' +
+      '<li><b>Haematocrit:</b> about three quarters of everolimus in blood sits in red cells at therapeutic concentrations, and the binding saturates. The app reports the measured value and the value corrected to ' + H + ' (Eq. 3 of the model paper). The same windows apply to both. In the paper the corrected trough or AUC differed from the measured one by more than 20% in about one occasion in seven.</li>' +
+      '<li><b>Sampling:</b> a predose trough, with or without one sample 1–3 h after the dose. The trough informs clearance, and so the AUC; the volume needs the extra sample. Enter exact times and the haematocrit of the same day.</li>' +
+      '<li><b>Interactions:</b> ciclosporin lowers everolimus metabolism by about half; CYP3A and P-glycoprotein inhibitors and inducers also matter. The consensus notes that the tacrolimus concentration does not change everolimus exposure. Interactions are not asked for in the app.</li>' +
+      '</ul>' +
+      '<h3>Why model-based estimation</h3>' +
+      '<p>A model-based estimate uses the sample times you actually have, handles the haematocrit, and returns the trough and the AUC with an interval from one fit. The consensus lists the semi-mechanistic model with haematocrit normalisation among its examples of model-informed dosing.</p>' +
+      '<p class="src">Masuda S, Lemaitre F, Barten MJ, et al. <i>Ther Drug Monit</i> 2025;47(1):4–31. Zwart TC, Moes DJAR, van der Boog PJM, et al. <i>Clin Pharmacokinet</i> 2021;60:191–203.</p>';
   }
 
   function modelTable(sp) {
@@ -96,7 +122,7 @@
     ];
     var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
     return '<table class="about-tbl"><thead><tr><th>Parameter</th><th>Typical value</th><th>IIV (CV%)</th></tr></thead><tbody>' +
-      rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td></tr>'; }).join('') + '</tbody></table>';
+      rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td></tr>'; }).join('') + '</tbody></table></div>';
   }
 
   var HELP = {

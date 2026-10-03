@@ -58,6 +58,13 @@ steady state sums geometrically. One steady-state concentration costs about 0.4 
 
 The app is published at https://robterheine.github.io/nephrotdm/ (repo `Robterheine/nephrotdm`, only `index.html`) and the source at `Robterheine/nephrotdm-source` (MIT), the same two-repo layout as `complementtdm`. The earlier MPA-only page and repository (`mpatdm`, 1.1.1) were deleted the same day; its URL no longer resolves. About carries a link to the source repository. The author-query drafts (`docs/AUTHOR_QUERY*.md`) are not part of the published source. Verified on the live page: an everolimus fit on a worker pool, the About link, and autosave with the restore offer (possible over https, not in the local file view).
 
+## About enriched (3 October 2026, after publication)
+
+- **Tacrolimus and everolimus now have reference-value sections in About**, as MPA always had: a table of the windows the app uses (built from the spec, with grade and basis, so it cannot drift from the app), what the consensus does and does not give (tacrolimus: standard risk, higher risk without numbers, with everolimus, the trough-matched AUC ranges; everolimus: no AUC target, descriptive values that are not targets, other indications not covered), then haematocrit, assay and sampling, and a short "why model-based" part with the sources.
+- **Author photo** at the bottom of About, the same 170 px circular WebP as in the complementtdm app, inline (no network): `src/author_photo.js`.
+- Page size 407.5 KB (about 39 KB of it is the photo).
+- Tests: `About: tacrolimus and everolimus each get reference values ...` and `About: the author photo sits at the bottom ...` (both red before, and red again when undone), plus the em-dash, dose-advice and validation-caveat rules on the new text. The MPA/tacrolimus text snapshot was re-recorded after checking that the only differences were the new tacrolimus sections and the table wrappers.
+
 ## Beginner test and its fixes (3 October 2026)
 
 A beginner walkthrough of the built page (all three drugs, all dialogs, typical mistakes, phone width) found two bugs and five smaller inconsistencies; all are fixed, each with a test that failed first and goes red when the fix is undone.

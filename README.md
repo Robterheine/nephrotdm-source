@@ -74,7 +74,7 @@ enters the regimen; the app shows consequences. This rule is absolute and is tes
 
 ```bash
 cd mpa-tdm
-npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (35); all must stay green
+npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (38); all must stay green
 npm run build                 # == node build.mjs  → nephrotdm.html (the deliverable)
 node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, tacrolimus and everolimus blocks)
 ```
@@ -183,6 +183,7 @@ src/
                           steady state, blood transform, exposure). Also reached only through `spec.custom` hooks. `spec.ui` carries its
                           presentation flags (and tacrolimus's): noun, weight, predDose, occasions, badge, chartTitle, shrinkEta, modelLine.
   texts_evr.js            Everolimus texts and result/report/explorer sentences; registers ECU.drugTexts.evr (ui.js reads the registry).
+  author_photo.js         The author photo (inline WebP, ~39 KB base64) shown at the bottom of About; the same image as in complementtdm.
   parallel.js             Runs the independent MCMC chains of a fit on a pool of Web Workers built from the page's own inlined
                           scripts; falls back, with identical draws, to the in-process run. Tacrolimus only (bayes.js `chainSeed`,
                           `runChainTask`); MPA keeps its single-stream sampler. See docs/PERFORMANCE_AUDIT_V121.md.
@@ -214,7 +215,7 @@ tests/
   harness.js              Minimal xUnit: t(), assert(), eq(), near(), throws(),
                           rejects(), truthy(), falsy(), runAll() (async). Exit code
                           is wired: a failing suite fails the process.
-  test_everolimus.js      The everolimus suite (35 tests): matrix-exponential and RK4 oracles, the §3.5 reference table, Eq. 3, NONMEM fixtures
+  test_everolimus.js      The everolimus suite (38 tests): matrix-exponential and RK4 oracles, the §3.5 reference table, Eq. 3, NONMEM fixtures
                           (structure and POSTHOC), worker pool, wiring, copy rules, the UI-text snapshot of MPA and tacrolimus, regression record.
   evr_regression.json, ui_text_snapshot.json, nonmem_evr_struct.*, nonmem_evr_posthoc.json   its fixtures (re-record only for an intended change).
   test_tacrolimus.js      The tacrolimus suite (60 tests, incl. an independent RK4 oracle, the Størset
@@ -380,7 +381,7 @@ S1/Ω-approximation robustness arms.
 
 ## 11. Open items (updated for v1.4.0, 3 October 2026)
 
-- **Everolimus:** the human review (`docs/VERIFICATION_TEAM.md`, addendum written) and publishing are open; the page is 359.4 KB, above the ~350 KB budget (owner accepted); no interaction field, no transplant-date field and no AUC window by owner decision.
+- **Everolimus:** the human review (`docs/VERIFICATION_TEAM.md`, addendum written) and publishing are open; the page is 407.5 KB (the author photo is ~39 KB of it), above the ~350 KB budget (owner accepted 359 KB, not yet this size); no interaction field, no transplant-date field and no AUC window by owner decision.
 - **Tacrolimus:** standard kidney window shipped (trough 4–12, AUC 150–210; AUC upper bound is the app's choice, `docs/SOURCE_ANALYSIS_BRUNET_2019.md`); no transplant-date field (first-weeks bias is stated in the text, not
   detected), once-daily and other schedules are refused, not modelled. See `docs/ADVERSARIAL_AUDIT_V121.md` for the judgement items.
 

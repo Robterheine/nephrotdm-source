@@ -92,7 +92,37 @@
       '<li>The first days after transplantation. The model’s first-day bioavailability effect is left out, so on day 4 the real trough of a typical patient is about 20–50% higher than the model expects and the steady-state AUC is overestimated. On day 7 the gap is about 5–15%, and after two weeks 1% or less.</li>' +
       '<li>Renal and liver function, age, interacting drugs (CYP3A and P-glycoprotein inhibitors and inducers), food and adherence. None of these is in the model. A stable interaction is absorbed by the patient’s own clearance; one that starts or stops inside the entered history is not.</li>' +
       '<li>Results below the limit of quantification. A result reported as “&lt; LLOQ” cannot be used, so omit it.</li>' +
-      '</ul>';
+      '</ul>' + referenceSections();
+  }
+
+  /* About: reference values and practical background, built from the spec so the numbers are the ones the app uses. */
+  function referenceSections() {
+    var sp = ECU.model.spec('tac'), H = sp.custom.constants.HCT_REF, CM = sp.custom.assays.cmia, rows = '', mrows = '';
+    sp.windowSets.filter(function (w) { return !w.matched; }).forEach(function (w) {
+      rows += '<tr><td>' + w.label + (w.id === sp.windowStandard ? ' (the app starts here)' : '') + '</td><td>' + w.trough[0] + '–' + w.trough[1] + '</td><td>' + (w.auc ? w.auc[0] + '–' + w.auc[1] : 'none given') + '</td><td>' + w.grade + '</td></tr>';
+    });
+    sp.windowSets.filter(function (w) { return w.matched && w.matched.col === 'all'; }).forEach(function (w) {
+      mrows += '<tr><td>' + w.trough[0] + '–' + w.trough[1] + '</td><td>' + w.auc[0] + '–' + w.auc[1] + '</td></tr>';
+    });
+    return '<h3>Reference values for tacrolimus (adult kidney recipients, twice-daily immediate-release)</h3>' +
+      '<p>From the IATDMCT second consensus report (Brunet 2019). The windows are starting points that you can change or clear; the Tacrolimus background dialog has the same sets with a “Use this window” button each. µg/L is the same as ng/mL.</p>' +
+      '<div class="winmatrix-wrap"><table class="data about-tbl"><thead><tr><th>Setting</th><th>Trough (µg/L)</th><th>AUC<sub>0–12h</sub> (µg·h/L)</th><th>Grade</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<ul class="about-list">' +
+      '<li><b>Standard immunological risk:</b> the trough range 4–12 is a graded consensus recommendation, and the report prefers troughs above 7. The AUC lower bound of 150 is the report’s minimal threshold, a weaker recommendation that rests on two small studies. The upper bound of 210 is the app’s own choice, the top of the AUC range the report pairs with a trough of 8–12.</li>' +
+      '<li><b>Higher immunological risk:</b> the report says targets may be higher but gives no numbers. Enter your protocol’s values.</li>' +
+      '<li><b>With everolimus:</b> reduced-exposure tacrolimus, trough 4–7 in months 0–2 and 2–4 afterwards. The report gives no AUC range for this combination.</li>' +
+      '<li><b>Trough-matched AUC ranges</b> (derived, not tested against outcomes): regression of the Bayesian-estimated AUC on the trough in 2030 routine profiles from 1000 adult kidney recipients (Saint-Marcoux 2013), combined over the three periods after transplantation as the report quotes them. The per-period ranges are in the background dialog.</li>' +
+      '</ul>' +
+      '<div class="winmatrix-wrap"><table class="data about-tbl"><thead><tr><th>Trough (µg/L)</th><th>AUC<sub>0–12h</sub> (µg·h/L), all periods</th></tr></thead><tbody>' + mrows + '</tbody></table></div>' +
+      '<h3>Haematocrit, assay and sampling</h3>' +
+      '<ul class="about-list">' +
+      '<li><b>Haematocrit:</b> tacrolimus sits in red cells, so whole blood reads higher at a higher haematocrit for the same plasma concentration, and haematocrit changes after transplantation (in the source cohort from about 0.30 to about 0.37 over the first weeks). The app reports the measured value and the value corrected to ' + H + '. The same windows apply to both.</li>' +
+      '<li><b>Assay:</b> LC-MS/MS, or Abbott CMIA converted with the model authors’ equation (LC-MS/MS = ' + CM.m.toFixed(2) + ' × CMIA + ' + CM.b.toFixed(2) + ' µg/L, one laboratory, 43 pairs, 3.6–14.4 µg/L CMIA). Other immunoassays cannot be used.</li>' +
+      '<li><b>Sampling:</b> a predose trough plus one sample 1–3 h after the dose tells the model much more about the AUC than troughs alone. Enter exact times and a haematocrit with each sample, and avoid the first 45 minutes after a dose (the model has a 25-minute lag). One sampling day cannot fix the steady-state AUC better than about ×/÷ 1.4; two days give about ×/÷ 1.3.</li>' +
+      '</ul>' +
+      '<h3>Why model-based estimation</h3>' +
+      '<p>The consensus proposes AUC as the best TDM option early after transplantation, when immunosuppression is being minimised, in special populations and in specific clinical situations. Estimating it from a population model plus the samples you enter lets you use the sample times you actually have, not a fixed schedule, handles the haematocrit, and returns an interval rather than a single number.</p>' +
+      '<p class="src">Brunet M, van Gelder T, Åsberg A, et al. <i>Ther Drug Monit</i> 2019;41(3):261–307. Saint-Marcoux F, Woillard JB, Jurado C, Marquet P. <i>Ther Drug Monit</i> 2013;35(3):322–327. Størset E, Holford N, Hennig S, et al. <i>Br J Clin Pharmacol</i> 2014;78(3):509–523.</p>';
   }
 
   /* Extra rows for the model card (About → Models), straight from the spec constants. */

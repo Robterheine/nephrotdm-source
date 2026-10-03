@@ -242,7 +242,7 @@ t('engine: Ht invariance end to end — the same plasma curve read at Ht 0.25 an
 // input checks (UI layer, pure)
 // ---------------------------------------------------------------------------
 var UI = null;
-function ui() { if (!UI) { require('../src/chart.js'); require('../src/diagnostics.js'); require('../src/texts_tac.js'); require('../src/texts_evr.js'); require('../src/ui.js'); UI = ECU.ui; } return UI; }
+function ui() { if (!UI) { require('../src/chart.js'); require('../src/diagnostics.js'); require('../src/texts_tac.js'); require('../src/texts_evr.js'); require('../src/author_photo.js'); require('../src/ui.js'); UI = ECU.ui; } return UI; }
 t('input: dose, concentration, interval and haematocrit checks (inputProblems)', function () {
   var base = evrInput();
   eq(ui().inputProblems(S, base, [1.5], true).length, 0, 'a normal case raises nothing');
@@ -327,7 +327,7 @@ t('UI text of MPA and tacrolimus is byte-identical to the recorded baseline (the
       obs: [{ t: 368.33, c: 9.5 }, { t: 369, c: 12.1 }, { t: 371, c: 4.4 }], intervalHours: 12, winLo: 30, winHi: 60, seed: 1, mcmcIters: 40000 }, null);
     ['mpa', 'tac'].forEach(function (id) {
       M.select(id);
-      var noVer = function (h) { return h.replace(/<h3>Version<\/h3><p>v[^<]*<\/p>/, '<h3>Version</h3>'); };   // a version bump alone must not break this guard
+      var noVer = function (h) { return h.replace(/<h3>Version<\/h3><p>v[^<]*<\/p>/, '<h3>Version</h3>').replace(/<div class="about-photo">[\s\S]*?<\/div>/, ''); };   // a version bump alone must not break this guard
       eq(noVer(U.aboutHtml()), noVer(rec[id].about), id + ' About'); eq(U.backgroundHtml(), rec[id].background, id + ' background');
       eq(U.gettingStartedBodyHtml(), rec[id].gettingStarted, id + ' getting started');
       eq(U.drugText('chartNote'), rec[id].chartNote, id + ' chart note'); eq(U.drugText('howto'), rec[id].howto, id + ' how-to');
@@ -351,7 +351,7 @@ t('copy: everolimus texts name the right drug, carry no tacrolimus/MPA wording, 
     S.covariates.map(function (c) { return c.name + ' ' + c.help; }).join(' '));
   var all = texts.join('\n');
   falsy(/—/.test(all), 'no em-dash');
-  falsy(/tacrolimus|mycophenol|\bMPA\b|CYP3A5|Størset|de Winter|fat-free/i.test(all), 'no other drug named');
+  falsy(/tacrolimus|mycophenol|\bMPA\b|CYP3A5|Størset|de Winter|fat-free/i.test(all.replace('the tacrolimus concentration does not change everolimus exposure', '')), 'no other drug named (the consensus interaction statement is the one allowed mention)');
   falsy(/not validated|unvalidated|has not been validated/i.test(all), 'no validation caveat on a corrected value or a target');
   falsy(/\b(you should|we recommend|recommended dose|increase the dose|reduce the dose|raise the dose|lower the dose|adjust the dose|switch to)\b/i.test(all), 'no dose advice');
   falsy(/0\.35/.test(all), 'the tacrolimus reference haematocrit does not leak in');
@@ -534,6 +534,52 @@ t('About links to the source repository (nephrotdm-source) for every drug, in a 
   });
   M.select('mpa');
   falsy(/Robterheine\/mpatdm|github\.io\/mpatdm/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'ui.js'), 'utf8')), 'no reference to the retired mpatdm repository in the code');
+});
+
+t('About: tacrolimus and everolimus each get reference values (from the spec, with grade and basis), assay/haematocrit/sampling and a model-based rationale, as MPA does', function () {
+  var U = ui();
+  function section(id, name) {
+    M.select(id);
+    try { var a = U.aboutHtml(); var i = a.indexOf('<h3>Reference values for ' + name); return i < 0 ? '' : a.slice(i, a.indexOf('<h3>Models</h3>')); } finally { M.select('mpa'); }
+  }
+  var tac = section('tac', 'tacrolimus'), evr = section('evr', 'everolimus');
+  truthy(tac, 'a tacrolimus reference-values section'); truthy(evr, 'an everolimus reference-values section');
+  M.spec('tac').windowSets.filter(function (w) { return !w.matched; }).forEach(function (w) {
+    truthy(tac.indexOf(w.label) >= 0 && tac.indexOf(w.trough[0] + '–' + w.trough[1]) >= 0, 'tacrolimus table row: ' + w.label);
+    if (w.auc) truthy(tac.indexOf(w.auc[0] + '–' + w.auc[1]) >= 0, 'AUC of ' + w.label);
+  });
+  M.spec('tac').windowSets.filter(function (w) { return w.matched && w.matched.col === 'all'; }).forEach(function (w) {
+    truthy(tac.indexOf(w.trough[0] + '–' + w.trough[1]) >= 0 && tac.indexOf(w.auc[0] + '–' + w.auc[1]) >= 0, 'matched AUC range for trough ' + w.trough);
+  });
+  M.spec('evr').windowSets.forEach(function (w) { truthy(evr.indexOf(w.label) >= 0 && evr.indexOf(w.trough[0] + '–' + w.trough[1]) >= 0, 'everolimus table row: ' + w.label); });
+  truthy(/Saint-Marcoux/.test(tac) && /Brunet/.test(tac), 'tacrolimus sources named'); truthy(/Masuda/.test(evr) && /Zwart/.test(evr), 'everolimus sources named');
+  truthy(/<h3>Haematocrit, assay and sampling<\/h3>/.test(tac) && /<h3>Assay, haematocrit and sampling<\/h3>/.test(evr), 'assay, haematocrit and sampling sections');
+  truthy(/<h3>Why model-based/.test(tac) && /<h3>Why model-based/.test(evr), 'rationale sections');
+  truthy(/no AUC target/i.test(evr) && /12–20/.test(evr) && /ciclosporin/i.test(evr) && /LC-MS\/MS/.test(evr), 'everolimus: no AUC target, the cancer range as out of scope, ciclosporin, assay');
+  truthy(/0\.35/.test(tac) && !/0\.38/.test(tac), 'tacrolimus names 0.35 only'); truthy(/0\.38/.test(evr) && !/0\.35/.test(evr), 'everolimus names 0.38 only');
+  [tac, evr].forEach(function (x) {
+    falsy(/—/.test(x), 'no em-dash'); falsy(/not validated|unvalidated/i.test(x), 'no validation caveat');
+    falsy(/\b(you should|we recommend|recommended dose|increase the dose|reduce the dose|raise the dose|lower the dose|adjust the dose|switch to)\b/i.test(x), 'no dose advice');
+  });
+  falsy(/tacrolimus|Størset/i.test(evr.replace(/tacrolimus concentration does not/i, '')), 'everolimus section does not name tacrolimus except the consensus interaction statement');
+  falsy(/everolimus/i.test(tac.replace(/with everolimus|plus everolimus|everolimus sets/gi, '')), 'tacrolimus section names everolimus only for the combination windows');
+});
+
+t('About: the author photo sits at the bottom for every drug, offline (data URI), with alt text and the same caption as complementtdm', function () {
+  var U = ui();
+  ['mpa', 'tac', 'evr'].forEach(function (id) {
+    M.select(id);
+    var a = U.aboutHtml(), i = a.indexOf('<div class="about-photo">');
+    truthy(i > a.indexOf('<h3>Contact</h3>'), id + ': photo block after the contact section');
+    truthy(/<img src="data:image\/webp;base64,UklGR[A-Za-z0-9+\/=]{20000,}" alt="Photo of Rob ter Heine" width="56" height="56">/.test(a), id + ': inline webp, alt text, 56 px');
+    truthy(/Dept\. of Pharmacy, Pharmacology &amp; Toxicology, Radboudumc &amp; Radboud Applied Pharmacometrics research group/.test(a), id + ': caption');
+  });
+  M.select('mpa');
+  var css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.css'), 'utf8');
+  truthy(/\.modal \.about-photo img \{[^}]*border-radius: 50%/.test(css), 'circular photo style');
+  var root = path.join(__dirname, '..');
+  truthy(/'src\/author_photo\.js'/.test(fs.readFileSync(path.join(root, 'build.mjs'), 'utf8')) && /<script src="src\/author_photo\.js"><\/script>/.test(fs.readFileSync(path.join(root, 'index.html'), 'utf8')), 'the photo file is in the build and the dev page');
+  truthy(fs.statSync(path.join(root, 'src', 'author_photo.js')).size < 60000, 'the photo stays small (about 38 KB of base64)');
 });
 
 h.runAll().then(function (ok) { if (!ok) process.exit(1); }).catch(function (e) { console.error(e); process.exit(1); });
