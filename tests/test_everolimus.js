@@ -582,4 +582,14 @@ t('About: the author photo sits at the bottom for every drug, offline (data URI)
   truthy(fs.statSync(path.join(root, 'src', 'author_photo.js')).size < 60000, 'the photo stays small (about 38 KB of base64)');
 });
 
+t('layout: header, content and footer share one centred column on wide screens (the header text sat at the left edge while the cards were centred)', function () {
+  var css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.css'), 'utf8');
+  truthy(/--col:\s*980px/.test(css), 'one column-width variable');
+  truthy(/main\.layout \{[^}]*max-width: var\(--col\)/.test(css), 'main uses it');
+  truthy(/\n\.app \{[^}]*padding: var\(--sp-4\) max\(var\(--sp-5\), calc\(\(100% - var\(--col\)\) \/ 2\)\)/.test(css), 'header band: content aligned to the column');
+  truthy(/footer\.app \{[^}]*padding: var\(--sp-3\) max\(var\(--sp-5\), calc\(\(100% - var\(--col\)\) \/ 2\)\)/.test(css), 'footer: content aligned to the column');
+  var mob = css.slice(css.indexOf('@media (max-width: 640px)'));
+  truthy(/\.app \{ padding: var\(--sp-3\); \}/.test(mob) && /footer\.app \{ padding: var\(--sp-3\); \}/.test(mob), 'phones keep their small padding');
+});
+
 h.runAll().then(function (ok) { if (!ok) process.exit(1); }).catch(function (e) { console.error(e); process.exit(1); });

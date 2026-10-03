@@ -65,6 +65,10 @@ The app is published at https://robterheine.github.io/nephrotdm/ (repo `Robterhe
 - Page size 407.5 KB (about 39 KB of it is the photo).
 - Tests: `About: tacrolimus and everolimus each get reference values ...` and `About: the author photo sits at the bottom ...` (both red before, and red again when undone), plus the em-dash, dose-advice and validation-caveat rules on the new text. The MPA/tacrolimus text snapshot was re-recorded after checking that the only differences were the new tacrolimus sections and the table wrappers.
 
+## Layout: header and footer aligned to the content column (3 October 2026)
+
+On wide screens the white header band and the footer kept their text at a fixed 20 px from the left edge while the cards sat in a centred 980 px column, so the top of the page looked off-centre (at 1280 px the title started at 20 px and the cards at 143 px). One variable, `--col`, now defines the column; the header band and the footer pad their content to it (`max(20px, (100% - col) / 2)`), the bands stay full width, and phones keep their small padding. Measured title, buttons, cards and footer text on one left edge at 1920, 1280, 1000 and 375 px, no horizontal overflow. Test: `layout: header, content and footer share one centred column ...`.
+
 ## Beginner test and its fixes (3 October 2026)
 
 A beginner walkthrough of the built page (all three drugs, all dialogs, typical mistakes, phone width) found two bugs and five smaller inconsistencies; all are fixed, each with a test that failed first and goes red when the fix is undone.
