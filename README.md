@@ -74,7 +74,7 @@ enters the regimen; the app shows consequences. This rule is absolute and is tes
 
 ```bash
 cd mpa-tdm
-npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (38); all must stay green
+npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (39) && test_report.js (9); all must stay green
 npm run build                 # == node build.mjs  → nephrotdm.html (the deliverable)
 node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, tacrolimus and everolimus blocks)
 ```
@@ -183,6 +183,7 @@ src/
                           steady state, blood transform, exposure). Also reached only through `spec.custom` hooks. `spec.ui` carries its
                           presentation flags (and tacrolimus's): noun, weight, predDose, occasions, badge, chartTitle, shrinkEta, modelLine.
   texts_evr.js            Everolimus texts and result/report/explorer sentences; registers ECU.drugTexts.evr (ui.js reads the registry).
+  report.js               The one-page A4 report for every drug: ECU.report.build(ctx), pure (ui.js builds ctx from the run snapshot). Per-drug facts are in `spec.report` (lead tile, scope, window source, reading notes, short citation). Greyscale-safe, nothing under 12 px.
   author_photo.js         The author photo (inline WebP, ~39 KB base64) shown at the bottom of About; the same image as in complementtdm.
   parallel.js             Runs the independent MCMC chains of a fit on a pool of Web Workers built from the page's own inlined
                           scripts; falls back, with identical draws, to the in-process run. Tacrolimus only (bayes.js `chainSeed`,
@@ -215,7 +216,8 @@ tests/
   harness.js              Minimal xUnit: t(), assert(), eq(), near(), throws(),
                           rejects(), truthy(), falsy(), runAll() (async). Exit code
                           is wired: a failing suite fails the process.
-  test_everolimus.js      The everolimus suite (38 tests): matrix-exponential and RK4 oracles, the §3.5 reference table, Eq. 3, NONMEM fixtures
+  test_report.js          The one-page report (9 tests): order, citations, per-drug tiles, escaping, safety notes, greyscale and type size, print setup.
+  test_everolimus.js      The everolimus suite (39 tests): matrix-exponential and RK4 oracles, the §3.5 reference table, Eq. 3, NONMEM fixtures
                           (structure and POSTHOC), worker pool, wiring, copy rules, the UI-text snapshot of MPA and tacrolimus, regression record.
   evr_regression.json, ui_text_snapshot.json, nonmem_evr_struct.*, nonmem_evr_posthoc.json   its fixtures (re-record only for an intended change).
   test_tacrolimus.js      The tacrolimus suite (60 tests, incl. an independent RK4 oracle, the Størset

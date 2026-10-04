@@ -473,8 +473,8 @@ t('fix 1: a drug without a weight covariate puts no weight in its report or sess
   try {
     M.select('mpa');
     U.renderReport();
-    falsy(/Weight/.test(els.reportSheet.innerHTML), 'MPA report: no Weight row (the page hides the field, the model does not use it)');
-    truthy(/<th>ID<\/th>/.test(els.reportSheet.innerHTML) && /Formulation/.test(els.reportSheet.innerHTML), 'the rest of the patient block is intact');
+    falsy(/Weight/.test(els.reportSheet.innerHTML), 'no forecast yet: the report page says so and carries no stale weight (the MPA report with a fit is checked in test_report.js)');
+    truthy(/No forecast has been run in this session/.test(els.reportSheet.innerHTML), 'a report without a forecast is an explanation, not an empty form');
     eq(U.sessionObj().patient.wt, '', 'MPA session: no stale weight');
     M.select('tac'); els['pt-drug'].value = 'tac';
     eq(U.sessionObj().patient.wt, '80', 'tacrolimus keeps its weight in the session');

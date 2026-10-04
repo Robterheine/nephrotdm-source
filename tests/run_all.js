@@ -1305,7 +1305,9 @@ t('F4: renderReport reads the run snapshot, and every live-field read is the no-
   src.split('\n').forEach(function (line) {
     if (live.test(line)) truthy(/view \?/.test(line), 'live read outside the fallback: ' + line.trim());
   });
-  truthy(/Inputs changed on screen since this forecast/.test(src), 'stamps a report whose inputs changed after the fit');
+  truthy(/inputsChanged/.test(src) && /staleBanner/.test(src), 'renderReport passes whether the inputs changed after the fit');
+  var rep = fs.readFileSync(path.join(__dirname, '..', 'src', 'report.js'), 'utf8');
+  truthy(/Inputs changed on screen since this forecast/.test(rep), 'and the report stamps it (src/report.js)');
 });
 
 t('F10: the printed report carries the dosing-input mode and the recency preset', function () {

@@ -309,6 +309,17 @@
     backgroundLabel: 'Tacrolimus background',
     info: 'Two-compartment model with first-order absorption and lag time for immediate-release tacrolimus (twice daily) in adult kidney transplant recipients (242 patients, 3100 whole-blood concentrations, mostly the first three months). Disposition is modelled on plasma concentrations and scaled to fat-free mass; whole-blood concentrations follow from the haematocrit. CYP3A5 genotype and prednisolone dose are covariates. Reported: steady-state AUC0–12h and trough, as measured (actual) and corrected to haematocrit 0.35.',
     pending: false,
+    // the one-page report (src/report.js)
+    report: {
+      lead: 'auc',
+      modelCite: 'Størset E, Holford N, Hennig S, et al. Improved prediction of tacrolimus concentrations early after kidney transplantation using theory-based pharmacokinetic modelling. Br J Clin Pharmacol 2014;78(3):509–523.',
+      scope: 'Størset 2014 · adult kidney transplant, immediate-release twice-daily · research use only',
+      windowSource: 'Brunet M, van Gelder T, Åsberg A, et al. Therapeutic drug monitoring of tacrolimus-personalized therapy: second consensus report. Ther Drug Monit 2019;41(3):261–307.',
+      noWindow: {},
+      reading: ['Corrected: the same plasma concentration read at haematocrit @H.',
+        'One sampling day fixes the AUC no better than about ×/÷ 1.4. The first weeks read high.',
+        'Not in the model: renal and liver function, age, interactions, food, adherence. Unknown CYP3A5 is taken as non-expresser.']
+    },
     // presentation flags read by ui.js (texts are in ECU.drugTexts.tac)
     ui: { noun: 'tacrolimus', weight: true, predDose: true, occasions: true, badge: 'Størset 2014 · tacrolimus', chartTitle: 'Tacrolimus whole-blood concentration–time forecast', shrinkEta: 'CL', modelLine: 'Størset 2014 (adult kidney transplant, immediate-release tacrolimus)' },
     units: { conc: 'µg/L', auc: 'µg·h/L', dose: 'mg', concAlt: 'ng/mL' },   // same numbers; shown as a hint

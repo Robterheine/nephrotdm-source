@@ -36,6 +36,16 @@
     label: 'Mycophenolic acid',
     article: 'de Winter BCM, van Gelder T, Glander P, et al. Population Pharmacokinetics of Mycophenolic Acid: A Comparison between Enteric-Coated Mycophenolate Sodium and Mycophenolate Mofetil in Renal Transplant Recipients. Clin Pharmacokinet 2008;47(12):827–838.',
     backgroundLabel: 'MPA TDM background',
+    // the one-page report (src/report.js)
+    report: {
+      lead: 'auc',
+      scope: 'de Winter 2008 · kidney transplant, MMF or EC-MPS · research use only',
+      windowSource: 'Bergan S, Brunet M, Hesselink DA, et al. Personalized therapy for mycophenolate: consensus report by IATDMCT. Ther Drug Monit 2021;43(2):150–197.',
+      noWindow: {},
+      reading: ['AUC₀–₁₂ₕ is the exposure over one 12-hour interval at steady state; other intervals are shown as their 12-hour equivalent.',
+        'The window 30 to 60 mg·h/L is the kidney-transplant range; other indications differ.',
+        'The predicted trough is informational: the app has no trough target.']
+    },
     info: 'Two-compartment model with first-order absorption and lag time, fitted to 3764 concentrations from 259 maintenance renal-transplant recipients (4–257 months post-transplant). Formulation is a covariate on absorption: EC-MPS is absorbed later and more variably than MMF (trimodal morning lag-time). No patient covariates besides formulation; dosing is absolute mg (no allometric weight scaling). Validated internally (1000 bootstraps + visual predictive check) on pooled data; see the model card in About for scope and caveats.',
     pending: false,
 

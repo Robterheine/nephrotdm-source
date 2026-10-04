@@ -208,6 +208,17 @@
     backgroundLabel: 'Everolimus background',
     info: 'Semi-mechanistic model for twice-daily everolimus in adult kidney transplant recipients: five equal absorption stages, a liver compartment with flow-limited extraction, and a two-compartment plasma disposition. Whole-blood concentrations follow from the haematocrit through saturable red-cell binding. Prednisolone at 20 mg/day or more is the one drug covariate. Reported: steady-state AUC0–12h and trough, as measured (actual) and corrected to haematocrit 0.38.',
     pending: false,
+    // the one-page report (src/report.js): which tile leads, scope line, source of the windows, plain-language reading notes
+    report: {
+      lead: 'trough',
+      modelCite: 'Zwart TC, Moes DJAR, van der Boog PJM, et al. Model-informed precision dosing of everolimus: external validation in adult renal transplant recipients. Clin Pharmacokinet 2021;60:191–203. doi:10.1007/s40262-020-00925-8.',
+      scope: 'Model 3 · adult kidney transplant, twice-daily · research use only',
+      windowSource: 'Masuda S, Lemaitre F, Barten MJ, et al. Everolimus personalized therapy: second consensus report by IATDMCT. Ther Drug Monit 2025;47(1):4–31.',
+      noWindow: { auc: ' The consensus gives no AUC target for everolimus.' },
+      reading: ['Corrected: the same plasma concentration read at haematocrit @H.',
+        'No day-to-day effect in the model: a later single measurement scatters more than the interval shows.',
+        'Not in the model: ciclosporin and other interactions, liver function, food, adherence.']
+    },
     // presentation flags read by ui.js (texts are in ECU.drugTexts.evr)
     ui: { noun: 'everolimus', weight: false, predDose: false, badge: 'Zwart 2021 · everolimus (Model 3)', chartTitle: 'Everolimus whole-blood concentration–time forecast', shrinkEta: 'CLINT', modelLine: 'Zwart 2021, Model 3 (adult kidney transplant, twice-daily everolimus)' },
     units: { conc: 'µg/L', auc: 'µg·h/L', dose: 'mg', concAlt: 'ng/mL' },

@@ -5,7 +5,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const FILES = ['src/version.js', 'src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/bayes.js', 'src/parallel.js', 'src/chart.js', 'src/diagnostics.js', 'src/texts_tac.js', 'src/texts_evr.js', 'src/author_photo.js', 'src/ui.js'];
+const FILES = ['src/version.js', 'src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/bayes.js', 'src/parallel.js', 'src/chart.js', 'src/diagnostics.js', 'src/texts_tac.js', 'src/texts_evr.js', 'src/author_photo.js', 'src/report.js', 'src/ui.js'];
 
 // Central version check: src/version.js is the single source of truth; keep
 // package.json in step with it (the build warns loudly if they drift).

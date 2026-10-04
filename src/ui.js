@@ -1254,140 +1254,45 @@
       ' · recency weighting: ' + (opt ? opt.textContent : (inp.recency || 'off'));
   }
 
-  function renderReportTac() {   // the report of the drugs with custom hooks (tacrolimus, everolimus); drug-specific parts come from spec.ui and the texts registry
+  /* The printed report: one A4 page for every drug (src/report.js). Everything it shows is read from the run snapshot (state.lastRunView),
+   * the inputs the forecast was produced from; the live fields are only the fallback when no forecast has been run. */
+  function renderReport() {
     var fit = state.lastRun;
-    var rspec = M.spec(fit ? fit.drug : M.drug().id), rtx = TX(rspec.id), noun = uiVal('noun', rspec) || rspec.label.toLowerCase(), predCol = uiFlag('predDose', rspec);
     var view = fit ? state.lastRunView : null;
+    var spec = M.spec(fit ? fit.drug : M.drug().id);
     var inputsChanged = !!(fit && $('staleBanner').classList.contains('show'));
-    var win = view ? view.win : windowBounds(), twin = view ? view.troughWin : troughBounds();
-    var doses = view ? view.doses : effectiveDoses();
-    var obsList = view ? view.obs : state.obs;
-    var ex = view ? view.extra : extraCovariates();
-    var pid = view ? view.patientId : $('pt-code').value;
-    var wtTxt = view ? view.weight : $('pt-wt').value;
-    var uA = fit ? aucUnit(fit) : UN().auc, uC = fit ? concUnit(fit) : UN().conc;
-    var sexTxt = ex.sex === 'm' ? 'male' : (ex.sex === 'f' ? 'female' : '–');
-    var cyTxt = ex.cyp3a5 === 'expresser' ? 'expresser' : (ex.cyp3a5 === 'nonexpresser' ? 'non-expresser' : 'unknown (non-expresser assumed)');
-    var assayTxt = rtx && rtx.reportPatient ? '' : ex.assay === 'cmia' ? 'Abbott CMIA (Architect), converted to LC-MS/MS equivalents with LC = ' + M.spec('tac').custom.assays.cmia.m.toFixed(2) + ' × CMIA + ' + M.spec('tac').custom.assays.cmia.b.toFixed(2) + ' µg/L' : (ex.assay === 'lcms' ? 'LC-MS/MS' : '–');
-    var ffmTxt = fit && fit.extra && isFinite(fit.extra.ffm) ? fmtC(fit.extra.ffm, 1) + ' kg' : '–';
-    var rows = obsList.map(function (o, i) {
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(o.t)) + '</td><td>' + esc(o.c) + ' ' + esc(uC) + '</td><td>' + (o.hct != null ? esc(o.hct) : esc(ex.hct || '–')) + '</td></tr>';
-    }).join('');
-    var drows = doses.map(function (d, i) {
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(d.t)) + '</td><td>' + esc(d.amt) + ' mg ' + esc(noun) + '</td>' + (predCol ? '<td>' + (d.pred != null ? esc(d.pred) : esc(ex.pred || '–')) + '</td>' : '') + '</tr>';
-    }).join('');
-    function stat(label, x, unit, winSet) {
-      return '<tr><td>' + label + '</td><td>' + fmtC(x.median) + ' ' + esc(unit) + '</td><td>' + fmtC(x.p5) + ' – ' + fmtC(x.p95) + '</td><td>' +
-        (winSet ? fmtP(x.pInWindow) : '–') + '</td><td>' + (winSet ? fmtP(x.pAboveLower) : '–') + '</td><td>' + (winSet ? fmtP(x.pBelowUpper) : '–') + '</td></tr>';
-    }
-    var ssMode = !!(fit && state.lastRunInputs && state.lastRunInputs.steadyState);   // the 30 back-doses are an expansion, not data
-    var tws = fit && fit.troughWin && fit.troughWin.set;
-    var findings = fit
-      ? '<table class="data"><tr><th>Steady state, typical day</th><th>Median</th><th>5–95% interval</th><th>P(within window)</th><th>P(&gt; lower)</th><th>P(&lt; upper)</th></tr>' +
-        stat('AUC₀–12h, actual', fit.auc, uA, fit.windowSet) +
-        stat('AUC₀–12h, corrected to haematocrit ' + esc(fit.hctRef), fit.aucCorr, uA, fit.windowSet) +
-        stat('Trough, actual', fit.trough, uC, tws) +
-        stat('Trough, corrected to haematocrit ' + esc(fit.hctRef), fit.troughCorr, uC, tws) + '</table>' +
-        '<p class="legend-note">' + (rtx && rtx.reportNote ? rtx.reportNote(fit, { esc: esc, fmtC: fmtC }) : 'Steady state of the current regimen on a typical day, at the haematocrit of the latest sample (' + esc(fmtC(fit.hctReport)) + ' L/L); a single day varies around it by about 23%. The corrected values refer to haematocrit ' + esc(fit.hctRef) + '.') + '</p>' +
-        (DG.convergenceNote(fit) ? '<p class="legend-note"><b>Note:</b> ' + esc(DG.convergenceNote(fit)) + '</p>' : '') +
-        '<p class="legend-note">' + esc(DG.summaryHint(fit)) + '</p>'
-      : '<p class="legend-note">No forecast has been run in this session.</p>';
-    var chartHtml = $('chart') ? $('chart').innerHTML : '';
+    var form = view ? view.form : currentForm();
+    var ctx = {
+      fit: fit, spec: spec, inputsChanged: inputsChanged, version: VERSION, now: new Date().toLocaleString(),
+      patientId: view ? view.patientId : $('pt-code').value,
+      weight: view ? view.weight : $('pt-wt').value,
+      usesWeight: usesWeight(spec), form: form, formLabel: spec.FORMS ? formLabel(form) : '',
+      extra: view ? view.extra : extraCovariates(),
+      doses: view ? view.doses : effectiveDoses(),
+      obs: view ? view.obs : state.obs,
+      win: view ? view.win : windowBounds(),
+      troughWin: view ? view.troughWin : troughBounds(),
+      ssMode: !!(fit && state.lastRunInputs && state.lastRunInputs.steadyState),
+      units: { auc: fit ? aucUnit(fit) : UN().auc, conc: fit ? concUnit(fit) : UN().conc },
+      settings: fit ? fittingSettingsText(state.lastRunInputs) : '',
+      advice: $('rp-advice').value, prepared: $('rp-prepared').value, fmtClock: fmtHoursClock,
+      notes: fit ? reportNotes(fit, spec) : {}
+    };
     var sheet = $('reportSheet');
-    sheet.innerHTML =
-      '<div class="report">' +
-      '<h1>NephroTDM report: ' + esc(noun) + '</h1>' +
-      (inputsChanged ? '<p class="legend-note"><b>Inputs changed on screen since this forecast.</b> This report shows the inputs the forecast was run with; re-run before signing if the changes matter.</p>' : '') +
-      '<div class="legend-note">Generated ' + new Date().toLocaleString() + ' · NephroTDM v' + esc(VERSION) + ' · model: ' + esc(uiVal('modelLine', rspec) || rspec.article) + ' · research use only · time in hours</div>' +
-      (rtx && rtx.reportPatient ? rtx.reportPatient({ esc: esc, pid: pid, ex: ex, fit: fit }) :
-      '<h2>Patient</h2><table class="data">' +
-      '<tr><th>ID</th><td>' + esc(pid) + '</td><th>Sex</th><td>' + esc(sexTxt) + '</td></tr>' +
-      '<tr><th>Weight</th><td>' + esc(wtTxt) + ' kg</td><th>Height</th><td>' + esc(ex.ht || '–') + ' cm</td></tr>' +
-      '<tr><th>Fat-free mass</th><td>' + esc(ffmTxt) + '</td><th>CYP3A5</th><td>' + esc(cyTxt) + '</td></tr>' +
-      '<tr><th>Prednisolone</th><td>' + esc(ex.pred || '–') + ' mg/day</td><th>Haematocrit (patient card)</th><td>' + esc(ex.hct || '–') + ' L/L</td></tr>' +
-      '<tr><th>Assay</th><td colspan="3">' + esc(assayTxt) + '</td></tr></table>') +
-      '<h2>Dosing schedule</h2>' + (ssMode && doses.length
-        ? '<p>Steady state: ' + esc(doses[doses.length - 1].amt) + ' mg ' + esc(noun) + ' every ' + esc(fit.intervalHours) + ' h, latest dose ' + esc(fmtHoursClock(doses[doses.length - 1].t)) + (predCol ? ', prednisolone ' + esc(ex.pred || '–') + ' mg/day' : '') + '.</p>'
-        : (drows ? '<table class="data"><tr><th>#</th><th>When</th><th>Dose</th>' + (predCol ? '<th>Prednisolone (mg/day)</th>' : '') + '</tr>' + drows + '</table>' : '<p class="legend-note">None entered.</p>')) +
-      '<h2>Measurements</h2>' + (rows ? '<table class="data"><tr><th>#</th><th>When</th><th>Result</th><th>Haematocrit (L/L)</th></tr>' + rows + '</table>' : '<p class="legend-note">None entered.</p>') +
-      '<h2>Therapeutic windows</h2><p>AUC₀–12h: ' + (win.lo != null && win.hi != null ? esc(win.lo) + ' – ' + esc(win.hi) + ' ' + esc(uA) : 'not set') +
-      ' · trough: ' + (twin.lo != null && twin.hi != null ? esc(twin.lo) + ' – ' + esc(twin.hi) + ' ' + esc(uC) : 'not set') + '</p>' +
-      (fit ? '<h2>Fitting settings</h2><p>' + esc(fittingSettingsText(state.lastRunInputs)) + '</p>' : '') +
-      '<h2>Model findings</h2>' + findings +
-      (chartHtml ? '<h2>Concentration–time</h2>' + chartHtml : '') +
-      '<h2>Advice</h2><p style="white-space:pre-wrap">' + esc($('rp-advice').value) + '</p>' +
-      '<h2>Signature</h2><p>Prepared by: ' + esc($('rp-prepared').value) + '<br>Signature: ____________________________</p>' +
-      '<p class="legend-note">This app does not recommend or optimize doses. Clinical judgement and verification required.</p>' +
-      '</div>';
+    sheet.innerHTML = fit ? ECU.report.build(ctx) : '<div class="rp-page"><h1 style="margin:0;font-size:20px">NephroTDM report</h1><p>No forecast has been run in this session. Run a forecast first, then print the report.</p></div>';
     sheet.hidden = false;
     root.print();
     setTimeout(function () { sheet.hidden = true; }, 400);
   }
-
-  function renderReport() {
-    if ((state.lastRun && M.spec(state.lastRun.drug).custom) || (!state.lastRun && isCustom())) { renderReportTac(); return; }
-    var fit = state.lastRun;
-    // F4: with a forecast on screen the report shows the inputs that forecast was computed from, never
-    // the live fields (which may have been edited since). If they were, say so on the page.
-    var view = fit ? state.lastRunView : null;
-    var inputsChanged = !!(fit && $('staleBanner').classList.contains('show'));
-    var win = view ? view.win : windowBounds();
-    var doses = view ? view.doses : effectiveDoses();
-    var obsList = view ? view.obs : state.obs;
-    var pid = view ? view.patientId : $('pt-code').value;
-    var wtTxt = view ? view.weight : $('pt-wt').value;
-    var rows = obsList.map(function (o, i) {
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(o.t)) + '</td><td>' +
-        esc(o.c) + ' mg/L</td></tr>';
-    }).join('');
-    var form = view ? view.form : currentForm();
-    var drows = doses.map(function (d, i) {
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(d.t)) + '</td><td>' + esc(d.amt) + ' mg ' + esc(formLabel(form)) +
-        ' (= ' + fmtC(M.toMpaMg(d.amt, form)) + ' mg MPA) ' + esc(d.route) + '</td></tr>';
-    }).join('');      var aucHtml = fit
-      ? '<table class="data"><tr><th>AUC₀–12h' + (fit.intervalHours !== 12 ? ' <span class="hint">(equiv. of AUC₀–' + esc(fit.intervalHours) + 'h)</span>' : '') + '</th><th>5–95% interval</th><th>P(within window)</th><th>P(&gt; lower)</th><th>P(&lt; upper)</th></tr>' +
-        '<tr><td>' + fmtC(fit.auc.median) + ' mg·h/L</td><td>' + fmtC(fit.auc.p5) + ' – ' + fmtC(fit.auc.p95) + '</td><td>' + fmtP(fit.auc.pInWindow) + '</td><td>' + fmtP(fit.auc.pAboveLower) + '</td><td>' + fmtP(fit.auc.pBelowUpper) + '</td></tr></table>' +
-        (fit.intervalHours !== 12 && fit.aucRaw
-          ? '<p class="legend-note">AUC reported as its 12-hour equivalent (AUC₁₂ = AUC₀–' + esc(fit.intervalHours) + 'h × 12/' + esc(fit.intervalHours) + '); as-simulated AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' mg·h/L. The window is an AUC₀–12h target.</p>'
-          : '') +
-        (fit.warnSingleDose
-          ? '<p class="legend-note"><b>Note:</b> only one dose was entered, so this AUC describes a single dose from zero, not steady state.</p>'
-          : (DG.shortHistoryNote(fit) ? '<p class="legend-note"><b>Note:</b> ' + esc(DG.shortHistoryNote(fit)) + '</p>' : '')) +
-        (DG.convergenceNote(fit)
-          ? '<p class="legend-note"><b>Note:</b> ' + esc(DG.convergenceNote(fit)) + '</p>'
-          : '') +
-        (fit.aucAnchorShifted
-          ? '<p class="legend-note">The AUC window is anchored at the most recent morning dose (EC-MPS targets refer to morning-dose profiles); an evening-anchored window would read lower.</p>'
-          : '') +
-        '<p class="legend-note">Predicted trough C(τ) (no target): ' + fmtC(fit.trough.median) + ' mg/L (' + fmtC(fit.trough.p5) + ' – ' + fmtC(fit.trough.p95) + ').</p>' +
-        '<p class="legend-note">' + esc(DG.summaryHint(fit)) + '</p>'
-      : '<p class="legend-note">No forecast has been run in this session.</p>';
-    var chartHtml = $('chart') ? $('chart').innerHTML : '';
-    var sheet = $('reportSheet');
-    sheet.innerHTML =
-      '<div class="report">' +
-      '<h1>NephroTDM report: mycophenolic acid</h1>' +
-      (inputsChanged ? '<p class="legend-note"><b>Inputs changed on screen since this forecast.</b> This report shows the inputs the forecast was run with; re-run before signing if the changes matter.</p>' : '') +
-      '<div class="legend-note">Generated ' + new Date().toLocaleString() + ' · NephroTDM v' + esc(VERSION) +
-      ' · model: de Winter 2008 (' + esc(formLabel(form)) + ') · research use only · time in hours</div>' +
-      '<h2>Patient</h2>' +
-      '<table class="data">' +
-      (usesWeight(M.spec(fit ? fit.drug : M.drug().id)) ? '<tr><th>ID</th><td>' + esc(pid) + '</td><th>Weight</th><td>' + esc(wtTxt) + ' kg</td></tr>' : '<tr><th>ID</th><td colspan="3">' + esc(pid) + '</td></tr>') +
-      '<tr><th>Formulation</th><td colspan="3">' + esc(formLabel(form)) + '</td></tr>' +
-      '</table>' +
-      '<h2>Dosing schedule</h2>' + (drows ? '<table class="data"><tr><th>#</th><th>When</th><th>Dose</th></tr>' + drows + '</table>' : '<p class="legend-note">None entered.</p>') +
-      '<h2>Measurements</h2>' + (rows ? '<table class="data"><tr><th>#</th><th>When</th><th>Result</th></tr>' + rows + '</table>' : '<p class="legend-note">None entered.</p>') +
-      '<h2>Therapeutic window</h2><p>' + esc(win.lo != null ? win.lo : '–') + ' – ' + esc(win.hi != null ? win.hi : '–') + ' mg·h/L (lower – upper bound)</p>' +
-      (fit ? '<h2>Fitting settings</h2><p>' + esc(fittingSettingsText(state.lastRunInputs)) + '</p>' : '') +
-      '<h2>Model findings</h2>' + aucHtml +
-      (chartHtml ? '<h2>Concentration–time</h2>' + chartHtml : '') +
-      '<h2>Advice</h2><p style="white-space:pre-wrap">' + esc($('rp-advice').value) + '</p>' +
-      '<h2>Signature</h2><p>Prepared by: ' + esc($('rp-prepared').value) + '<br>Signature: ____________________________</p>' +
-      '<p class="legend-note">This app does not recommend or optimize doses. Clinical judgement and verification required.</p>' +
-      '</div>';
-    sheet.hidden = false;
-    root.print();
-    setTimeout(function () { sheet.hidden = true; }, 400);
+  /* the cautions that must travel with the numbers: sampling convergence, a short or single-dose history, weak information, EC-MPS anchoring */
+  function reportNotes(fit, spec) {
+    var cap = function (x) { return x ? x.charAt(0).toUpperCase() + x.slice(1) : ''; };
+    return {
+      convergence: DG.convergenceNote(fit),
+      shortHistory: fit.warnSingleDose ? 'Only one dose was entered, so this AUC describes a single dose from zero, not steady state.' : DG.shortHistoryNote(fit),
+      shrink: spec.custom ? '' : cap(DG.shrinkageNote(fit)),
+      anchor: fit.aucAnchorShifted ? 'The AUC window is anchored at the most recent morning dose (EC-MPS targets refer to morning-dose profiles); an evening-anchored window would read lower.' : ''
+    };
   }
 
   function bind() {
