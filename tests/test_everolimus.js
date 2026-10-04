@@ -242,7 +242,7 @@ t('engine: Ht invariance end to end — the same plasma curve read at Ht 0.25 an
 // input checks (UI layer, pure)
 // ---------------------------------------------------------------------------
 var UI = null;
-function ui() { if (!UI) { require('../src/chart.js'); require('../src/diagnostics.js'); require('../src/texts_tac.js'); require('../src/texts_evr.js'); require('../src/author_photo.js'); require('../src/ui.js'); UI = ECU.ui; } return UI; }
+function ui() { if (!UI) { require('../src/chart.js'); require('../src/diagnostics.js'); require('../src/texts_tac.js'); require('../src/texts_evr.js'); require('../src/author_photo.js'); require('../src/report.js'); require('../src/ui.js'); UI = ECU.ui; } return UI; }
 t('input: dose, concentration, interval and haematocrit checks (inputProblems)', function () {
   var base = evrInput();
   eq(ui().inputProblems(S, base, [1.5], true).length, 0, 'a normal case raises nothing');
@@ -508,7 +508,7 @@ t('fix 4 to 6: page wording — older-sample weighting is not "Weight", the step
   var html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   falsy(/Weight of older samples/.test(html), 'the advanced option is not called Weight');
   truthy(/<label class="f" for="pt-recency">Down-weight older samples<\/label>/.test(html));
-  truthy(/<span class="step" data-step="run"><i>3<\/i> Forecast<\/span>/.test(html), 'step 3 reads Forecast');
+  truthy(/<a class="step" href="#resultsCard" data-step="run"><i>3<\/i> Forecast<\/a>/.test(html), 'step 3 reads Forecast');
   falsy(/<i>3<\/i> Run forecast/.test(html), 'step 3 is not "Run forecast" (the card is titled Forecast)');
   falsy(/planned dose/.test(html), 'no "planned dose"');
   var U = ui(); M.select('mpa');
@@ -584,7 +584,7 @@ t('About: the author photo sits at the bottom for every drug, offline (data URI)
 
 t('layout: header, content and footer share one centred column on wide screens (the header text sat at the left edge while the cards were centred)', function () {
   var css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.css'), 'utf8');
-  truthy(/--col:\s*980px/.test(css), 'one column-width variable');
+  truthy(/--col:\s*1200px/.test(css), 'one column-width variable');
   truthy(/main\.layout \{[^}]*max-width: var\(--col\)/.test(css), 'main uses it');
   truthy(/\n\.app \{[^}]*padding: var\(--sp-4\) max\(var\(--sp-5\), calc\(\(100% - var\(--col\)\) \/ 2\)\)/.test(css), 'header band: content aligned to the column');
   truthy(/footer\.app \{[^}]*padding: var\(--sp-3\) max\(var\(--sp-5\), calc\(\(100% - var\(--col\)\) \/ 2\)\)/.test(css), 'footer: content aligned to the column');

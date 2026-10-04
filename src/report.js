@@ -67,6 +67,18 @@
       '<div style="position:relative;height:16px">' + ticks + '</div></div>';
   }
 
+  /* the plain-language probability sentence, shared by the screen tiles and the printed report */
+  function probLine(m, fit, spec) {
+    var s = m.stats, c = m.corr, H = fit.hctRef;
+    if (m.informational) return 'Predicted concentration just before the next dose. Informational: the app has no trough target.';
+    if (m.win) {
+      var pin = pct(s.pInWindow), pab = pct(s.pAboveLower), pbe = pct(s.pBelowUpper), pc = c ? pct(c.pInWindow) : null;
+      return '<b>' + pin + '% chance</b> the ' + m.what + ' is within the window ' + fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit) +
+        (pc != null && c && !(Math.abs((fit.hctReport || 0) - H) < 0.005) ? ' (corrected: ' + pc + '%)' : '') + '. Chance above ' + fmtC(m.win.lo) + ': ' + pab + '%. Chance below ' + fmtC(m.win.hi) + ': ' + pbe + '%.';
+    }
+    return 'No ' + m.what + ' window is set, so no probabilities are shown.' + esc(((spec.report && spec.report.noWindow) || {})[m.key] || '');
+  }
+
   /* ---- one result tile ---------------------------------------------------------------------------------------------------- */
   function tile(m) {
     var s = m.stats, c = m.corr, ctx = m.ctx, H = ctx.fit.hctRef;
@@ -77,16 +89,7 @@
       corrLine = '<div style="font-size:13px;color:' + INK + '">Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' :
         '<b style="font-family:' + MONO + '">' + fmtC(c.median) + '</b> <span style="font-family:' + MONO + ';color:' + MUT + '">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + '</div>';
     }
-    var line;
-    if (m.informational) {
-      line = 'Predicted concentration just before the next dose. Informational: the app has no trough target.';
-    } else if (m.win) {
-      var pin = pct(s.pInWindow), pab = pct(s.pAboveLower), pbe = pct(s.pBelowUpper), pc = c ? pct(c.pInWindow) : null;
-      line = '<b>' + pin + '% chance</b> the ' + m.what + ' is within the window ' + fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit) +
-        (pc != null && c && !(Math.abs((ctx.fit.hctReport || 0) - H) < 0.005) ? ' (corrected: ' + pc + '%)' : '') + '. Chance above ' + fmtC(m.win.lo) + ': ' + pab + '%. Chance below ' + fmtC(m.win.hi) + ': ' + pbe + '%.';
-    } else {
-      line = 'No ' + m.what + ' window is set, so no probabilities are shown.' + esc(((ctx.spec.report && ctx.spec.report.noWindow) || {})[m.key] || '');
-    }
+    var line = probLine(m, ctx.fit, ctx.spec);
     var note = m.note ? '<div style="font-size:12px;color:' + MUT + '">' + m.note + '</div>' : '';
     return '<div style="flex:1 1 0;min-width:0;border:1px solid ' + RULE + ';border-radius:6px;padding:8px 12px;display:flex;flex-direction:column;gap:4px">' +
       '<div style="font-size:13px;font-weight:600;color:' + INK + '">' + m.title + '</div>' +
@@ -224,5 +227,5 @@
       '</div>';
   }
 
-  ECU.report = { build: build, niceScale: niceScale };
+  ECU.report = { build: build, niceScale: niceScale, probLine: probLine };
 })(typeof window !== 'undefined' ? window : globalThis);

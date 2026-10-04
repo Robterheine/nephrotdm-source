@@ -5,25 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NephroTDM</title>
 <!-- Built single-file artifact: nephrotdm.html (build: __BUILD__) -->
+<link rel="stylesheet" href="src/fonts.css">
 <link rel="stylesheet" href="src/app.css">
 </head>
 <body>
 
 <header class="app no-print">
-  <div>
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#0b6e85"/><path d="M5 25 C 10 25, 11 9, 16 9 S 22 25, 29 25" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="9" r="2.6" fill="#ffffff"/></svg>
     <h1><span id="appName">NephroTDM</span> <span class="appver" id="titleVersion" title="Application version"></span></h1>
-    <div class="sub" id="appSub">Model-informed therapeutic drug monitoring for kidney transplantation and nephrology. Choose a drug, enter the dosing and any measured concentrations, and the app estimates the patient’s exposure with its uncertainty and shows what a different dose would do. Everything runs locally in your browser: nothing you enter is sent or processed online. The only copy is an autosave in this browser.</div>
   </div>
-  <div class="actions">
+  <nav class="nav" aria-label="Help">
     <button id="btnGettingStarted" title="A short, step-by-step walkthrough for first-time use, opened in its own window">Getting started</button>
     <button id="btnBackground" title="Why therapeutic drug monitoring, reference values, model-based estimation and sampling advice for the selected drug">Background</button>
     <button id="btnAbout" title="Version, model documentation, contact and research-use disclaimer">About</button>
-    <button id="btnPrint" class="primary" title="Generate an A4 report of this patient, dosing schedule, samples, AUC estimate and advice, with prepared-by and signature lines">Print report</button>
-    <button id="btnExport" title="Download this session as a JSON file (pseudonym only, no identifiers required)">Export session</button>
-    <button id="btnImport" title="Restore a previously exported session">Import session</button>
-    <button id="btnClearSession" class="quiet" title="Delete the autosaved copy kept in this browser and empty this page. Exported session files are not affected.">Clear session</button>
+  </nav>
+  <div class="actions">
+    <details class="menu">
+      <summary title="Save, restore or clear this session">Session</summary>
+      <div class="menu-pop">
+        <button id="btnExport" title="Download this session as a JSON file (pseudonym only, no identifiers required)">Export session</button>
+        <button id="btnImport" title="Restore a previously exported session">Import session</button>
+        <button id="btnClearSession" class="danger" title="Delete the autosaved copy kept in this browser and empty this page. Exported session files are not affected.">Clear session</button>
+      </div>
+    </details>
+    <button id="btnPrint" title="Generate an A4 report of this patient, dosing schedule, samples, AUC estimate and advice, with prepared-by and signature lines">Print report</button>
     <input type="file" id="importFile" accept=".json" style="display:none">
   </div>
+  <div class="sub" id="appSub">Model-informed therapeutic drug monitoring for kidney transplantation and nephrology. Choose a drug, enter the dosing and any measured concentrations, and the app estimates the patient’s exposure with its uncertainty and shows what a different dose would do. Everything runs locally in your browser: nothing you enter is sent or processed online. The only copy is an autosave in this browser.</div>
 </header>
 
 <main class="layout">
@@ -37,25 +46,29 @@
   </div>
 
   <div class="note no-print" id="modelIntegratedNote" hidden>
-    <b>New:</b> tacrolimus for adult kidney transplant recipients (Størset 2014) now sits next to mycophenolic acid, and the app is called NephroTDM. Choose the drug in card 1. Each model’s parameters, scope and limits are in <b>About</b>.
+    <b>New:</b> everolimus for adult kidney transplant recipients (Zwart 2021) joins mycophenolic acid and tacrolimus, and the printed report is now one A4 page. Choose the drug in card 1. Each model’s parameters, scope and limits are in <b>About</b>.
     <button class="linklike" id="modelNoteDismiss" style="margin-left:8px">dismiss</button>
   </div>
 
   <div class="stepper no-print" id="stepper">
-    <span class="step" data-step="wt"><i>1</i> Patient &amp; covariates</span>
-    <span class="step" data-step="dose"><i>2</i> Dosing &amp; samples</span>
-    <span class="step" data-step="run"><i>3</i> Forecast</span>
-    <span class="step" data-step="explore"><i>4</i> Explore dose (optional)</span>
+    <a class="step" href="#patientCard" data-step="wt"><i>1</i> Patient &amp; covariates</a>
+    <a class="step" href="#chartCard" data-step="dose"><i>2</i> Dosing &amp; samples</a>
+    <a class="step" href="#resultsCard" data-step="run"><i>3</i> Forecast</a>
+    <a class="step" href="#regimenCard" data-step="explore"><i>4</i> Explore dose (optional)</a>
     <button class="linklike" id="stepperDismiss" title="Hide this guide">dismiss</button>
   </div>
+
+  <div class="workspace">
+  <div class="col-in">
 
   <!-- ============ 1 · PATIENT & COVARIATES ============ -->
   <div class="card sessionbar" id="patientCard">
     <h2><span class="stepnum">1</span> Patient &amp; covariates</h2>
     <div class="sess-row">
       <div class="sess-field sess-drug">
-        <label class="f" for="pt-drug">Drug / PK model</label>
-        <select id="pt-drug" title="Which drug's population PK model to use for this patient">
+        <span class="f" id="drugLbl">Drug / PK model</span>
+        <div class="drug-cards" id="drugCards" role="group" aria-labelledby="drugLbl"></div>
+        <select id="pt-drug" class="sr-only" aria-hidden="true" tabindex="-1" title="Which drug's population PK model to use for this patient">
           <option value="mpa">Mycophenolic acid</option>
           <option value="tac">Tacrolimus (adult kidney)</option>
           <option value="evr">Everolimus (adult kidney)</option>
@@ -66,14 +79,14 @@
           <label class="f" for="pt-wt">Weight (kg)</label>
           <button type="button" class="info" data-help="wt" aria-label="What is the weight field for?" aria-expanded="false" title="Body weight in kg">ⓘ</button>
         </div>
-        <input type="number" id="pt-wt" min="25" max="300" step="0.5" placeholder="e.g. 70" title="Body weight in kg">
+        <input type="number" inputmode="decimal" id="pt-wt" min="25" max="300" step="0.5" placeholder="e.g. 70" title="Body weight in kg">
       </div>
       <div class="sess-field" id="ageRow" style="display:none">
         <div class="lbl-help">
           <label class="f" for="pt-age">Age (years)</label>
           <button type="button" class="info" data-help="age" aria-label="What is the age field for?" aria-expanded="false" title="Age in years">ⓘ</button>
         </div>
-        <input type="number" id="pt-age" min="1" max="100" step="1" placeholder="e.g. 45" title="Age in years">
+        <input type="number" inputmode="decimal" id="pt-age" min="1" max="100" step="1" placeholder="e.g. 45" title="Age in years">
       </div>
       <div class="sess-field" id="renalRow" style="display:none">
         <div class="lbl-help">
@@ -103,9 +116,9 @@
             <label class="f" for="pt-winlo">Lower bound AUC₀–12h (mg·h/L)</label>
             <button type="button" class="info" data-help="window" aria-label="What is the therapeutic window?" aria-expanded="false" title="Lower and upper bound for therapeutic AUC0–12h">ⓘ</button>
           </div>
-          <input type="number" id="pt-winlo" min="0.1" max="500" step="any" title="Lower bound of the therapeutic AUC0–12h window (mg·h/L)">
+          <input type="number" inputmode="decimal" id="pt-winlo" min="0.1" max="500" step="any" title="Lower bound of the therapeutic AUC0–12h window (mg·h/L)">
           <label class="f" for="pt-winhi" style="margin-top:6px">Upper bound AUC₀–12h (mg·h/L)</label>
-          <input type="number" id="pt-winhi" min="0.1" max="5000" step="any" title="Upper bound of the therapeutic AUC0–12h window (mg·h/L)">
+          <input type="number" inputmode="decimal" id="pt-winhi" min="0.1" max="5000" step="any" title="Upper bound of the therapeutic AUC0–12h window (mg·h/L)">
           <div class="legend-note" id="windowHint"></div>
         </details>
       </div>
@@ -118,9 +131,9 @@
           </summary>
           <div class="legend-note">Both windows are clinical inputs from your protocol (see the background dialog for the IATDMCT consensus). Leave a window empty and the app reports intervals without probabilities.</div>
           <label class="f" for="pt-tlo">Lower bound trough (µg/L)</label>
-          <input type="number" id="pt-tlo" min="0" step="any" title="Lower bound of the therapeutic trough window (µg/L)">
+          <input type="number" inputmode="decimal" id="pt-tlo" min="0" step="any" title="Lower bound of the therapeutic trough window (µg/L)">
           <label class="f" for="pt-thi" style="margin-top:6px">Upper bound trough (µg/L)</label>
-          <input type="number" id="pt-thi" min="0" step="any" title="Upper bound of the therapeutic trough window (µg/L)">
+          <input type="number" inputmode="decimal" id="pt-thi" min="0" step="any" title="Upper bound of the therapeutic trough window (µg/L)">
         </details>
       </div>
     </div>
@@ -162,17 +175,17 @@
       <form class="inline no-print" id="doseForm" novalidate>
         <div class="row3" style="margin-top:8px">
           <div><label class="f" for="dose-dt">Date &amp; time</label><input type="datetime-local" id="dose-dt" title="Scheduled date and time of the administration"></div>
-          <div><label class="f" for="dose-amt" id="doseAmtLbl">Dose (mg)</label><input type="number" id="dose-amt" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Dose in mg as prescribed"></div>
-          <div id="dosePredWrap" style="display:none"><label class="f" for="dose-pred">Prednisolone (mg/day), if changed</label><input type="number" id="dose-pred" min="0" step="any" placeholder="patient value" title="Leave empty to use the prednisolone dose of the patient card. Enter a value only if the steroid dose was different on the day of this administration."></div>
-          <div style="align-self:end"><button class="primary" type="submit" id="doseAdd" style="width:100%" title="Add this dose to the schedule">Add dose</button></div>
+          <div><label class="f" for="dose-amt" id="doseAmtLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="dose-amt" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Dose in mg as prescribed"></div>
+          <div id="dosePredWrap" style="display:none"><label class="f" for="dose-pred">Prednisolone (mg/day), if changed</label><input type="number" inputmode="decimal" id="dose-pred" min="0" step="any" placeholder="patient value" title="Leave empty to use the prednisolone dose of the patient card. Enter a value only if the steroid dose was different on the day of this administration."></div>
+          <div style="align-self:end"><button class="secondary" type="submit" id="doseAdd" style="width:100%" title="Add this dose to the schedule">Add dose</button></div>
         </div>
       </form>
     </div>
 
     <div id="ssDoseUI" style="display:none">
       <div class="row3" style="margin-top:8px">
-        <div><label class="f" for="ss-dose" id="ssDoseLbl">Dose (mg)</label><input type="number" id="ss-dose" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Maintenance dose per administration, as prescribed"></div>
-        <div><label class="f" for="ss-interval">Interval (hours)</label><input type="number" id="ss-interval" min="1" max="48" step="1" placeholder="e.g. 12" title="Dosing interval in hours"></div>
+        <div><label class="f" for="ss-dose" id="ssDoseLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="ss-dose" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Maintenance dose per administration, as prescribed"></div>
+        <div><label class="f" for="ss-interval">Interval (hours)</label><input type="number" inputmode="decimal" id="ss-interval" min="1" max="48" step="1" placeholder="e.g. 12" title="Dosing interval in hours"></div>
         <div><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
       </div>
       <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”.</div>
@@ -197,19 +210,36 @@
             <option value="12">+12 h (trough if q12h)</option>
           </select>
         </div>
-        <div><label class="f" for="obs-val" id="obsValLbl">Concentration (mg/L)</label><input type="number" id="obs-val" min="0.001" max="1000" step="any" title="Measured serum concentration (mg/L). A result reported below the assay's limit of quantification cannot be used: omit it."></div>
-        <div id="obsHctWrap" style="display:none"><label class="f" for="obs-hct">Haematocrit (L/L)</label><input type="number" id="obs-hct" min="0.1" max="0.65" step="any" placeholder="e.g. 0.33" title="Haematocrit measured with this sample, as a fraction (0.33, not 33 %). Empty = the patient-card value."></div>
+        <div><label class="f" for="obs-val" id="obsValLbl">Concentration (mg/L)</label><input type="number" inputmode="decimal" id="obs-val" min="0.001" max="1000" step="any" title="Measured serum concentration (mg/L). A result reported below the assay's limit of quantification cannot be used: omit it."></div>
+        <div id="obsHctWrap" style="display:none"><label class="f" for="obs-hct">Haematocrit (L/L)</label><input type="number" inputmode="decimal" id="obs-hct" min="0.1" max="0.65" step="any" placeholder="e.g. 0.33" title="Haematocrit measured with this sample, as a fraction (0.33, not 33 %). Empty = the patient-card value."></div>
         <div style="align-self:end;display:flex;gap:8px;align-items:center">
-          <button class="primary" type="submit" id="obsAdd" style="flex:1" title="Add this measurement to the fit">Add</button>
+          <button class="secondary" type="submit" id="obsAdd" style="flex:1" title="Add this measurement to the fit">Add</button>
         </div>
       </div>
     </form>
   </div>
 
+  </div>
+  <div class="col-out">
+
   <!-- ============ 3 · FORECAST & RESULTS ============ -->
   <div class="card" id="resultsCard">
     <h2><span class="stepnum">3</span> Forecast</h2>
     <div class="stale-banner" id="staleBanner">Inputs changed. Press “Run forecast” to update.</div>
+    <div class="actions-inline no-print" id="runBar">
+      <button class="primary" id="btnRun" style="flex:1" title="Run the Bayesian individualization and refresh the plot, AUC estimate, trough and advisories">Run forecast</button>
+      <button class="secondary" id="btnDiag" disabled title="Inspect how well the fitted model explains this patient’s samples: observed vs individual prediction, residuals, parameter ranges, shrinkage and MCMC quality. Available after a forecast has run.">Fit diagnostics</button>
+    </div>
+    <div class="run-hint" id="runHint"></div>
+    <div class="progress-wrap" id="progress">
+      <div class="bar"><div id="progressBar"></div></div>
+      <div class="msg" id="progressMsg"></div>
+      <button type="button" class="linklike no-print" id="btnCancelRun" title="Stop this forecast; no result is produced">Cancel</button>
+    </div>
+    <div id="fitStatus"></div>
+    <div id="paramBlock"></div>
+    <div class="tiles"><div id="aucBlock"></div><div id="troughBlock"></div></div>
+    <div id="advisoryBlock"></div>
     <div id="chartBox">
       <div class="chart-head no-print">
         <label class="check chart-log" title="Show the concentration axis on a logarithmic scale">
@@ -219,18 +249,6 @@
       <div id="chart"></div>
     </div>
     <div class="legend-note" id="chartNote"></div>
-
-    <div class="progress-wrap" id="progress">
-      <div class="bar"><div id="progressBar"></div></div>
-      <div class="msg" id="progressMsg"></div>
-      <button type="button" class="linklike no-print" id="btnCancelRun" title="Stop this forecast; no result is produced">Cancel</button>
-    </div>
-
-    <div class="actions-inline no-print" style="margin-top:10px">
-      <button class="primary" id="btnRun" style="flex:1" title="Run the Bayesian individualization and refresh the plot, AUC estimate, trough and advisories">Run forecast</button>
-      <button class="secondary" id="btnDiag" disabled title="Inspect how well the fitted model explains this patient’s samples: observed vs individual prediction, residuals, parameter ranges, shrinkage and MCMC quality. Available after a forecast has run.">Fit diagnostics</button>
-    </div>
-    <div class="run-hint" id="runHint"></div>
     <details class="help advanced no-print" id="advancedForecast">
       <summary>Advanced fitting options</summary>
       <div>
@@ -251,11 +269,6 @@
       <summary>How to read these results</summary>
       <ul id="howtoList"></ul>
     </details>
-    <div id="fitStatus"></div>
-    <div id="paramBlock"></div>
-    <div id="aucBlock"></div>
-    <div id="troughBlock"></div>
-    <div id="advisoryBlock"></div>
   </div>
 
   <!-- ============ 4 · DOSE EXPLORER ============ -->
@@ -265,16 +278,19 @@
     </h2>
     <div class="iv-controls no-print">
       <label class="f" for="iv-amt" id="ivAmtLbl">Dose (mg)</label>
-      <input type="number" id="iv-amt" step="any" title="Dose per administration to evaluate, prefilled with the last dose entered">
+      <input type="number" inputmode="decimal" id="iv-amt" step="any" title="Dose per administration to evaluate, prefilled with the last dose entered">
       <label class="f" for="iv-interval">Interval</label>
       <select id="iv-interval" title="Dosing interval to simulate. AUCs are normalized to a 12-hour equivalent (AUC12 = AUC0-x × 12/x) so they stay comparable with the AUC0-12h therapeutic window.">
         <option value="12" selected>12 h (twice daily)</option>
         <option value="24">24 h (once daily)</option>
       </select>
-      <button class="primary" id="iv-run" title="Evaluate candidate doses using this patient's fitted parameters" disabled>Explore</button>
+      <button class="secondary" id="iv-run" title="Evaluate candidate doses using this patient's fitted parameters" disabled>Explore</button>
       <span class="hint" id="iv-status"></span>
     </div>
     <div id="iv-out"><div class="note">Run a forecast in card 3 first. This explorer reuses that fit's own parameters.</div></div>
+  </div>
+
+  </div>
   </div>
 
 </main>

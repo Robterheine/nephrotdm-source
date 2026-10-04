@@ -212,8 +212,35 @@
     if (note) note.hidden = currentForm() !== 'ecmps';
   }
 
+  /* The three drug cards. The hidden select #pt-drug stays the single source of truth: a card press sets it and fires its own change handler
+   * (confirmation before clearing, window reset, switch), then the cards are redrawn from whatever drug is selected afterwards. */
+  function drugCardsHtml(currentId) {
+    return M.listDrugs().map(function (d) {
+      var c = M.spec(d.id).card || { name: d.label, sub: '' }, on = d.id === currentId;
+      return '<button type="button" class="drug-card" data-drug="' + esc(d.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '"><span class="dc-name">' + esc(c.name) + '</span><span class="dc-sub">' + esc(c.sub) + '</span></button>';
+    }).join('');
+  }
+  function renderDrugCards() {
+    var host = $('drugCards');
+    if (!host) return;
+    host.innerHTML = drugCardsHtml(M.drug().id);
+    if (!host._bound) {
+      host._bound = true;
+      host.addEventListener('click', function (ev) {
+        var b = ev.target.closest ? ev.target.closest('button[data-drug]') : null;
+        if (!b || b.getAttribute('aria-pressed') === 'true') return;
+        var sel = $('pt-drug');
+        sel.value = b.getAttribute('data-drug');
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        renderDrugCards();   // a cancelled switch puts the select back; the cards follow it
+        var again = host.querySelector('button[aria-pressed="true"]'); if (again && again.focus) again.focus();
+      });
+    }
+  }
+
   function renderDrugAndCovariates() {
     var s = M.drug();
+    renderDrugCards();
     var hint = $('drugHint');
     if (hint) {
       // Do not dump the pending-model paragraph onto the main screen.
@@ -274,7 +301,7 @@
           '<button type="button" class="info" data-help="cov-' + esc(c.id) + '" aria-label="' +
           esc(c.name) + '" aria-expanded="false" title="' + esc(c.help || '') + '">ⓘ</button></div>' +
           '<input type="' + (c.units && /text|as declared/i.test(c.units) ? 'text' : 'number') +
-          '" id="cov-' + esc(c.id) + '" title="' + esc(c.help || '') + '"' +
+          '" inputmode="decimal" id="cov-' + esc(c.id) + '" title="' + esc(c.help || '') + '"' +
           (c.min != null ? ' min="' + c.min + '"' : '') + (c.max != null ? ' max="' + c.max + '"' : '') +
           (c.step != null ? ' step="' + c.step + '"' : '') + '>';
       }
@@ -570,35 +597,14 @@
     }
     if (btnDiag) btnDiag.disabled = false;
     if (M.spec(fit.drug).custom) { renderResultsTac(fit); return; }
-    var auc = fit.auc, tr = fit.trough;
-    var win = { lo: fit.winLo, hi: fit.winHi };
+    var auc = fit.auc, tr = fit.trough, spec0 = M.spec(fit.drug);
     var fitNorm = fit.intervalHours !== 12;
-    var fitAucLbl = fitNorm
-      ? 'AUC₀–12h equivalent (median, 5–95%)'
-      : 'AUC₀–12h (median, 5–95%)';
-    var fitAucSub = fmtC(auc.p5) + ' – ' + fmtC(auc.p95) + ' mg·h/L' +
-      (fitNorm && fit.aucRaw
-        ? ' · from AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' mg·h/L × 12/' + esc(fit.intervalHours)
-        : '') +
-      (fit.aucAnchorShifted ? ' · window anchored at the most recent morning dose' : '');
-    $('aucBlock').innerHTML =
-      '<div class="res-grid">' +
-      '<div class="res-cell res-hero"><div class="res-lbl">' + fitAucLbl + '</div>' +
-      '<div class="res-val">' + fmtC(auc.median) + ' <span class="res-unit">mg·h/L</span></div>' +
-      '<div class="res-sub">' + fitAucSub + '</div></div>' +
-      '<div class="res-cell"><div class="res-lbl">P(within window)</div>' +
-      '<div class="res-val">' + fmtP(auc.pInWindow) + '</div>' +
-      '<div class="res-sub">window ' + fmtC(win.lo) + ' – ' + fmtC(win.hi) + ' mg·h/L</div></div>' +
-      '<div class="res-cell"><div class="res-lbl">P(above lower)</div>' +
-      '<div class="res-val">' + fmtP(auc.pAboveLower) + '</div>' +
-      '<div class="res-sub">&gt; ' + fmtC(win.lo) + ' mg·h/L</div></div>' +
-      '<div class="res-cell"><div class="res-lbl">P(below upper)</div>' +
-      '<div class="res-val">' + fmtP(auc.pBelowUpper) + '</div>' +
-      '<div class="res-sub">&lt; ' + fmtC(win.hi) + ' mg·h/L</div></div>' +
-      '</div>';
-    $('troughBlock').innerHTML =
-      '<div class="res-note"><b>Predicted trough</b> C(τ) (informational, no trough target): ' +
-      fmtC(tr.median) + ' mg/L, 5–95% ' + fmtC(tr.p5) + ' – ' + fmtC(tr.p95) + ' mg/L.</div>';
+    var normNote = (fitNorm && fit.aucRaw ? 'As the 12-hour equivalent of the AUC over ' + esc(fit.intervalHours) + ' h (' + fmtC(fit.aucRaw.median) + ' mg·h/L as simulated, × 12/' + esc(fit.intervalHours) + ').' : '') +
+      (fit.aucAnchorShifted ? (fitNorm && fit.aucRaw ? ' ' : '') + 'Window anchored at the most recent morning dose.' : '');
+    $('aucBlock').innerHTML = resultTileHtml({ key: 'auc', what: 'AUC', title: fitNorm ? 'AUC₀–12h equivalent' : 'AUC₀–12h', unit: 'mg·h/L', stats: auc, corr: null,
+      win: (fit.windowSet && fit.winLo != null && fit.winHi != null) ? { lo: fit.winLo, hi: fit.winHi } : null, fit: fit, spec: spec0, note: normNote });
+    $('troughBlock').innerHTML = resultTileHtml({ key: 'trough', what: 'trough', title: 'Predicted trough C(τ)', unit: 'mg/L', stats: tr, corr: null, win: null, informational: true, fit: fit, spec: spec0 });
+    orderTiles(spec0);
     var statusBadge = fit.hasObs
       ? '<span class="badge info" title="' + esc(fit.nDraws) + ' posterior draws, MCMC acceptance ' + (fit.acceptance * 100).toFixed(0) + '%">Fitted to this patient’s ' +
         esc(fit.obsData ? fit.obsData.length : 0) + ' sample' + (fit.obsData && fit.obsData.length === 1 ? '' : 's') + '</span>'
@@ -631,34 +637,51 @@
 
   /* ---- tacrolimus results: two rows (AUC, trough), each with the actual value, a quieter corrected line, and the probabilities
    * against the user's window. Steady state on a typical day; the corrected value is a companion, never a second headline. */
-  function corrLine(c, win, winSet, what, fit) {
-    var same = Math.abs((fit.hctReport || 0) - fit.hctRef) < 0.005;
-    if (same) return 'corrected to haematocrit ' + fit.hctRef + ': same as above';
-    return 'corrected to haematocrit ' + fit.hctRef + ': <b>' + fmtC(c.median) + '</b> (' + fmtC(c.p5) + ' – ' + fmtC(c.p95) + ')' +
-      (winSet && isFinite(c.pInWindow) ? ' · P(within window) ' + fmtP(c.pInWindow) : '');
+  /* ---- result tiles (every drug): large median and interval, the corrected value beside it, a range bar against the window, and the plain-language
+   * sentence the printed report uses. Measured = solid bar, corrected = outlined bar, window = dashed band; shape, not colour alone. ---- */
+  function rangeBarHtml(stats, corr, win, scaleMax) {
+    var sc = ECU.report.niceScale(scaleMax * 1.06, 4), top = sc.max, P = function (v) { return (v / top * 100).toFixed(2); }, h = '';
+    if (win) h += '<div class="rb-win" style="left:' + P(win.lo) + '%;width:' + (P(win.hi) - P(win.lo)).toFixed(2) + '%"></div>';
+    h += '<div class="rb-int" style="left:' + P(stats.p5) + '%;width:' + Math.max(0.6, P(stats.p95) - P(stats.p5)).toFixed(2) + '%"></div><div class="rb-med" style="left:' + P(stats.median) + '%"></div>';
+    if (corr) h += '<div class="rb-cint" style="left:' + P(corr.p5) + '%;width:' + Math.max(0.6, P(corr.p95) - P(corr.p5)).toFixed(2) + '%"></div><div class="rb-cmed" style="left:' + P(corr.median) + '%"></div>';
+    var ticks = sc.ticks.map(function (t) { return '<span style="left:' + P(t) + '%">' + t + '</span>'; }).join('');
+    return '<div class="rb"><div class="rb-track" style="height:' + (corr ? 46 : 28) + 'px" role="img" aria-label="Interval bar">' + h + '</div><div class="rb-ticks">' + ticks + '</div></div>';
   }
-  function exposureRows(label, stats, corr, win, winSet, unit, fit, subExtra) {
-    var winTxt = winSet ? ('window ' + fmtC(win.lo) + ' – ' + fmtC(win.hi) + ' ' + esc(unit)) : '';
-    var cells =
-      '<div class="res-cell res-hero"><div class="res-lbl">' + label + ' (median, 5–95%)</div>' +
-      '<div class="res-val">' + fmtC(stats.median) + ' <span class="res-unit">' + esc(unit) + '</span></div>' +
-      '<div class="res-sub">' + fmtC(stats.p5) + ' – ' + fmtC(stats.p95) + ' ' + esc(unit) + (subExtra || '') + '</div>' +
-      '<div class="res-sub">' + corrLine(corr, win, winSet, label, fit) + '</div></div>';
-    if (winSet) {
-      cells +=
-        '<div class="res-cell"><div class="res-lbl">P(within window)</div><div class="res-val">' + fmtP(stats.pInWindow) + '</div><div class="res-sub">' + winTxt + '</div></div>' +
-        '<div class="res-cell"><div class="res-lbl">P(above lower)</div><div class="res-val">' + fmtP(stats.pAboveLower) + '</div><div class="res-sub">&gt; ' + fmtC(win.lo) + '</div></div>' +
-        '<div class="res-cell"><div class="res-lbl">P(below upper)</div><div class="res-val">' + fmtP(stats.pBelowUpper) + '</div><div class="res-sub">&lt; ' + fmtC(win.hi) + '</div></div>';
-    } else {
-      cells += '<div class="res-cell" style="grid-column:1 / -1"><div class="res-lbl">Window</div><div class="res-sub">not set. Enter the window in the patient card to see the probabilities of lying inside, above or below it.</div></div>';
+  function resultTileHtml(m) {
+    var s = m.stats, c = m.corr, fit = m.fit, H = fit.hctRef;
+    var corrLine = '';
+    if (c) {
+      var same = Math.abs((fit.hctReport || 0) - H) < 0.005;
+      corrLine = '<div class="tile-c"><span class="tile-cmark" aria-hidden="true"></span>Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' : '<b>' + fmtC(c.median) + '</b> <span class="tile-cr">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + '</div>';
     }
-    return '<div class="res-grid">' + cells + '</div>';
+    var chips = '';
+    if (!m.informational && m.win && isFinite(s.pInWindow)) {
+      var chip = function (l, v, sub) { return '<div class="chip-p"><div class="chip-l">' + l + '</div><div class="chip-v">' + fmtP(v) + '</div><div class="chip-s">' + sub + '</div></div>'; };
+      chips = '<div class="chips">' + chip('In the window', s.pInWindow, fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit)) + chip('Above the lower bound', s.pAboveLower, 'above ' + fmtC(m.win.lo)) + chip('Below the upper bound', s.pBelowUpper, 'below ' + fmtC(m.win.hi)) + '</div>';
+    }
+    var scaleMax = Math.max(s.p95, c ? c.p95 : 0, m.win ? m.win.hi : 0, 1e-9);
+    return '<div class="tile"><div class="tile-h"><span class="tile-name">' + m.title + '</span><span class="tile-sub">median and 5 to 95% interval</span></div>' +
+      '<div class="tile-v"><span class="num">' + fmtC(s.median) + '</span><span class="unit">' + esc(m.unit) + '</span><span class="rng">' + fmtC(s.p5) + ' to ' + fmtC(s.p95) + '</span></div>' +
+      corrLine + rangeBarHtml(s, c, m.win, scaleMax) + '<p class="tile-line">' + ECU.report.probLine(m, fit, m.spec) + '</p>' + chips + (m.note ? '<div class="tile-note">' + m.note + '</div>' : '') + '</div>';
+  }
+  /* kept as the entry point of the explorer and the screen results: label, stats, corrected stats, window, whether it is set, unit */
+  function exposureRows(label, stats, corr, win, winSet, unit, fit, subExtra) {
+    var isAuc = /AUC/.test(label);
+    return resultTileHtml({ key: isAuc ? 'auc' : 'trough', what: isAuc ? 'AUC' : 'trough', title: esc(label), unit: unit, stats: stats, corr: corr,
+      win: (winSet && win && win.lo != null && win.hi != null) ? { lo: win.lo, hi: win.hi } : null, fit: fit, spec: M.spec(fit.drug), note: subExtra ? esc(subExtra.replace(/^ · /, '')) : '' });
+  }
+  /* the lead tile is the one the drug's consensus works from (spec.report.lead), shown first */
+  function orderTiles(spec) {
+    var lead = spec && spec.report && spec.report.lead === 'trough';
+    if ($('aucBlock')) $('aucBlock').style.order = lead ? 2 : 1;
+    if ($('troughBlock')) $('troughBlock').style.order = lead ? 1 : 2;
   }
   function renderResultsTac(fit) {
     var uA = aucUnit(fit), uC = concUnit(fit);
     $('aucBlock').innerHTML = exposureRows('Steady-state AUC₀–12h', fit.auc, fit.aucCorr, { lo: fit.winLo, hi: fit.winHi }, fit.windowSet, uA, fit,
       fit.intervalHours !== 12 && fit.aucRaw ? ' · from AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' × 12/' + esc(fit.intervalHours) : '');
     $('troughBlock').innerHTML = exposureRows('Steady-state trough', fit.trough, fit.troughCorr, fit.troughWin, fit.troughWin && fit.troughWin.set, uC, fit, '');
+    orderTiles(M.spec(fit.drug));
     var badge = fit.hasObs
       ? '<span class="badge info" title="' + esc(fit.nDraws) + ' posterior draws, MCMC acceptance ' + (fit.acceptance * 100).toFixed(0) + '%">Fitted to this patient’s ' +
         esc(fit.obsData ? fit.obsData.length : 0) + ' sample' + (fit.obsData && fit.obsData.length === 1 ? '' : 's') + (uiFlag('occasions', M.spec(fit.drug)) ? ' on ' + esc(fit.nOccasions) + ' day' + (fit.nOccasions === 1 ? '' : 's') : '') + '</span>'
@@ -883,8 +906,8 @@
       $('iv-out').innerHTML =
         '<div class="res-grid"><div class="res-cell"><div class="res-lbl">Candidate maintenance dose</div><div class="res-val">' + esc(amt) + ' mg ' + esc(uiVal('noun', M.spec(fit.drug)) || '') + '</div>' +
         '<div class="res-sub">' + (txe && txe.explorerSub ? esc(txe.explorerSub(last, fit)) : 'every 12 h, at steady state, prednisolone ' + esc(last.pred != null ? last.pred : fit.extra.pred) + ' mg/day') + '</div></div></div>' +
-        exposureRows('Steady-state AUC₀–12h', r.auc, r.aucCorr, { lo: fit.winLo, hi: fit.winHi }, r.windowSet, uA, fit, '') +
-        exposureRows('Steady-state trough', r.trough, r.troughCorr, fit.troughWin, r.troughWinSet, uC, fit, '') +
+        '<div class="tiles">' + exposureRows('Steady-state AUC₀–12h', r.auc, r.aucCorr, { lo: fit.winLo, hi: fit.winHi }, r.windowSet, uA, fit, '') +
+        exposureRows('Steady-state trough', r.trough, r.troughCorr, fit.troughWin, r.troughWinSet, uC, fit, '') + '</div>' +
         '<div class="legend-note">' + ((txe && txe.explorerNote) || 'The explorer reuses this patient’s fitted posterior and simulates the candidate dose to steady state on a typical day. Whole-blood concentrations rise a little less than in proportion to the dose because binding to red cells saturates, so doubling a dose gives somewhat less than double the exposure. It does not select or recommend a dose.') + '</div>';
       $('iv-status').textContent = '';
     } catch (e) {
@@ -1296,6 +1319,12 @@
   }
 
   function bind() {
+    var menu = document.querySelector('header details.menu');   // the Session menu closes after a choice, on an outside click and on Escape
+    if (menu) {
+      menu.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('.menu-pop button')) menu.removeAttribute('open'); });
+      document.addEventListener('click', function (ev) { if (menu.open && !menu.contains(ev.target)) menu.removeAttribute('open'); });
+      menu.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { menu.removeAttribute('open'); var sm = menu.querySelector('summary'); if (sm) sm.focus(); } });
+    }
     var dismiss = $('stepperDismiss');
     if (dismiss) dismiss.addEventListener('click', function () { $('stepper').style.display = 'none'; });
 
@@ -1524,13 +1553,13 @@
     maybeRestore();
     // One-time notice about what is new in this version (never repeats once dismissed).
     try {
-      if (!localStorage.getItem('nephrotdm-note-v12') && !M.drug().pending) {
+      if (!localStorage.getItem('nephrotdm-note-v14') && !M.drug().pending) {
         var mn = $('modelIntegratedNote');
         if (mn) {
           mn.hidden = false;
           var md = $('modelNoteDismiss');
           if (md) md.onclick = function () {
-            try { localStorage.setItem('nephrotdm-note-v12', '1'); } catch (e2) {}
+            try { localStorage.setItem('nephrotdm-note-v14', '1'); } catch (e2) {}
             mn.hidden = true;
           };
         }
@@ -1565,6 +1594,8 @@
     applySession: applySession,
     aboutHtml: aboutHtml,
     drugText: drugText,
+    drugCardsHtml: drugCardsHtml,
+    resultTileHtml: resultTileHtml,
     backgroundHtml: backgroundHtml,
     gettingStartedBodyHtml: gettingStartedBodyHtml
   };

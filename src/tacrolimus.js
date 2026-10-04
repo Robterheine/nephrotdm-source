@@ -307,6 +307,7 @@
     label: 'Tacrolimus',
     article: 'Størset E, Holford N, Hennig S, Bergmann TK, Bergan S, Bremer S, Åsberg A, Midtvedt K, Staatz CE. Improved prediction of tacrolimus concentrations early after kidney transplantation using theory-based pharmacokinetic modelling. Br J Clin Pharmacol 2014;78(3):509–523.',
     backgroundLabel: 'Tacrolimus background',
+    card: { name: 'Tacrolimus (adult kidney)', sub: 'AUC and trough · Størset 2014' },
     info: 'Two-compartment model with first-order absorption and lag time for immediate-release tacrolimus (twice daily) in adult kidney transplant recipients (242 patients, 3100 whole-blood concentrations, mostly the first three months). Disposition is modelled on plasma concentrations and scaled to fat-free mass; whole-blood concentrations follow from the haematocrit. CYP3A5 genotype and prednisolone dose are covariates. Reported: steady-state AUC0–12h and trough, as measured (actual) and corrected to haematocrit 0.35.',
     pending: false,
     // the one-page report (src/report.js)

@@ -7,7 +7,7 @@
   "repository": { "type": "git", "url": "https://github.com/Robterheine/nephrotdm-source.git" },
   "description": "NephroTDM: model-informed therapeutic drug monitoring for kidney transplantation and nephrology — mycophenolic acid (AUC0–12h), tacrolimus and everolimus (steady-state AUC0–12h and trough). Single-file HTML app.",
   "scripts": {
-    "test": "node tests/run_all.js && node tests/test_tacrolimus.js && node tests/test_everolimus.js && node tests/test_report.js",
+    "test": "node tests/run_all.js && node tests/test_tacrolimus.js && node tests/test_everolimus.js && node tests/test_report.js && node tests/test_refresh.js",
     "build": "node build.mjs"
   },
   "engines": {

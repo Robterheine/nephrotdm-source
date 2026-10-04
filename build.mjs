@@ -19,9 +19,11 @@ if (pkg.version !== appVersion) {
 
 let html = readFileSync(resolve(root, 'index.html'), 'utf8');
 
-const css = readFileSync(resolve(root, 'src/app.css'), 'utf8');
-html = html.replace(/<link rel="stylesheet" href="src\/app\.css">/,
-  () => '<style>\n/* app.css (inlined) */\n' + css + '\n</style>');
+for (const sheet of ['fonts', 'app']) {
+  const css = readFileSync(resolve(root, 'src/' + sheet + '.css'), 'utf8');
+  html = html.replace(new RegExp('<link rel="stylesheet" href="src/' + sheet + '\\.css">'),
+    () => '<style>\n/* ' + sheet + '.css (inlined) */\n' + css + '\n</style>');
+}
 
 for (const f of FILES) {
   const js = readFileSync(resolve(root, f), 'utf8');

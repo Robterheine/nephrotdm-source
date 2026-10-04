@@ -206,6 +206,7 @@
     label: 'Everolimus',
     article: 'Zwart TC, Moes DJAR, van der Boog PJM, van Erp NP, de Fijter JW, Guchelaar HJ, Keizer RJ, ter Heine R. Model-informed precision dosing of everolimus: external validation in adult renal transplant recipients. Clin Pharmacokinet 2021;60:191–203 (Model 3).',
     backgroundLabel: 'Everolimus background',
+    card: { name: 'Everolimus (adult kidney)', sub: 'AUC and trough · Zwart 2021, Model 3' },
     info: 'Semi-mechanistic model for twice-daily everolimus in adult kidney transplant recipients: five equal absorption stages, a liver compartment with flow-limited extraction, and a two-compartment plasma disposition. Whole-blood concentrations follow from the haematocrit through saturable red-cell binding. Prednisolone at 20 mg/day or more is the one drug covariate. Reported: steady-state AUC0–12h and trough, as measured (actual) and corrected to haematocrit 0.38.',
     pending: false,
     // the one-page report (src/report.js): which tile leads, scope line, source of the windows, plain-language reading notes

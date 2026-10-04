@@ -11,27 +11,30 @@
 
 /* ---------- Phase 0 · design tokens ---------- */
 :root {
-  --bg: #f4f6f9;
+  --bg: #f2f5f7;
   --card: #ffffff;
-  --ink: #182230;
-  --ink-strong: #0d1520;
-  --muted: #5b6572;
-  --line: #e4e8ee;
-  --line-strong: #c9d2dc;
+  --ink: #13222d;
+  --ink-strong: #0b1620;
+  --muted: #4f5e6b;
+  --line: #d9e0e6;
+  --line-strong: #bfc9d2;
   --ok: #16a34a;   --ok-text: #166534;
   --warn: #d97706; --warn-text: #92400e;
   --bad: #dc2626;  --bad-text: #b91c1c;
-  --accent: #0e7490;
-  --accent-strong: #0a5c73;
-  --accent-soft: rgba(14,116,144,0.10);
-  --soft: rgba(14,116,144,0.16);
+  --accent: #0b6e85;
+  --accent-strong: #08566a;
+  --accent-soft: rgba(11,110,133,0.10);
+  --soft: rgba(11,110,133,0.16);
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --tap: 44px;   /* minimum height of anything you press */
 
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;
   --sp-4: 16px; --sp-5: 20px; --sp-6: 28px;
-  --col: 980px;   /* the content column; the header band and the footer align their text to it */
-  --text-xs: 12px; --text-sm: 13px; --text-md: 15px;
-  --text-lg: 18px; --text-xl: 24px; --text-2xl: 32px;
-  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-pill: 999px;
+  --col: 1200px;   /* the content column; the header band and the footer align their text to it */
+  --text-xs: 12.5px; --text-sm: 14px; --text-md: 16px;
+  --text-lg: 19px; --text-xl: 24px; --text-2xl: 32px;
+  --radius-sm: 9px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 999px;
   --shadow-xs: 0 1px 2px rgba(13,21,32,0.05), 0 1px 1px rgba(13,21,32,0.03);
   --shadow-sm: 0 2px 6px rgba(13,21,32,0.07), 0 1px 2px rgba(13,21,32,0.04);
   --shadow-md: 0 6px 16px rgba(13,21,32,0.09), 0 2px 4px rgba(13,21,32,0.05);
@@ -41,18 +44,18 @@
 }
 
 /* ---------- base ---------- */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: var(--text-md); color: var(--ink); background: var(--bg); }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; font-family: var(--font-sans); font-size: var(--text-md); color: var(--ink); background: var(--bg); }
 body { margin: 0; padding: 0; }
 button { font-family: inherit; font-size: var(--text-sm); }
-input, select, textarea { font-family: inherit; font-size: 14px; }
+input, select, textarea { font-family: inherit; font-size: 15px; }
 select { max-width: 100%; }   /* a select is as wide as its longest option unless capped: it pushed the page wider on phones */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
 /* text-ish fields: one unified treatment (checkboxes/radios keep native chrome + accent) */
 input[type="text"], input[type="number"], input[type="date"], input[type="time"],
 input[type="datetime-local"], input[type="file"], select, textarea {
   border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-  padding: 6px 10px; background: #fff; color: var(--ink);
+  padding: 0 12px; min-height: var(--tap); box-sizing: border-box; background: #fff; color: var(--ink);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); cursor: pointer; }
@@ -60,7 +63,7 @@ input[type="text"]:hover, input[type="number"]:hover, input[type="date"]:hover,
 input[type="time"]:hover, input[type="datetime-local"]:hover, select:hover, textarea:hover { border-color: #b3bfcb; }
 input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus,
 input[type="time"]:focus, input[type="datetime-local"]:focus, select:focus, textarea:focus {
-  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14,116,144,0.15);
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(11,110,133,0.20);
 }
 
 /* ---------- header ---------- */
@@ -73,7 +76,7 @@ input[type="time"]:focus, input[type="datetime-local"]:focus, select:focus, text
 
 /* ---------- buttons: primary / secondary / ghost ---------- */
 button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent-strong);
-  padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
+  padding: 0 18px; min-height: var(--tap); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
   box-shadow: var(--shadow-xs);
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
 button.primary:hover:not(:disabled) { background: var(--accent-strong); }
@@ -82,7 +85,7 @@ button.primary:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 header .actions button:not(.primary), .restore-bar button:not(.primary) {
   background: #fff; border: 1px solid var(--line-strong); color: #33404f;
-  padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  padding: 0 14px; min-height: var(--tap); border-radius: var(--radius-sm); cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
 header .actions button:not(.primary):hover, .restore-bar button:not(.primary):hover {
   border-color: var(--accent); color: var(--accent-strong); background: #f6fafc; }
@@ -93,7 +96,7 @@ button.linklike:hover { color: var(--ink); }
 
 /* explicit secondary tier for buttons outside the header (same look as header actions) */
 button.secondary { background: #fff; border: 1px solid var(--line-strong); color: #33404f;
-  padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  padding: 0 14px; min-height: var(--tap); border-radius: var(--radius-sm); cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
 button.secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); background: #f6fafc; }
 button.secondary:disabled { opacity: 0.55; cursor: default; }
@@ -395,3 +398,101 @@ button.info:hover { color: var(--accent); }
 .winmatrix th, .winmatrix td { text-align: center; padding: 4px 2px; }
 .winmatrix th { font-size: 10px; }
 .winmatrix button { padding: 3px 2px; font-size: 11px; min-width: 0; white-space: nowrap; }
+
+
+/* =========================================================================
+ * Step 2 refresh (4 October 2026): header, Session menu, drug cards, hidden select.
+ * ========================================================================= */
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; max-width: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+header.app { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); }
+.app .brand { display: flex; align-items: center; gap: var(--sp-3); }
+.app h1 { font-size: 20px; letter-spacing: -0.3px; border-left: 0; padding-left: 0; display: flex; align-items: baseline; gap: 8px; }
+.app .appver { font: 500 12px var(--mono); background: #eef2f5; border-radius: 6px; padding: 2px 7px; }
+.app .nav { display: flex; flex-wrap: wrap; gap: 2px; margin-right: auto; }
+.app .nav button { background: transparent; border: 1px solid transparent; color: var(--ink); font-weight: 500; padding: 0 14px; min-height: var(--tap); border-radius: var(--radius-sm); cursor: pointer; }
+.app .nav button:hover { background: #eef2f5; }
+header .actions { margin-top: 0; align-items: center; }
+.app .sub { flex: 1 0 100%; margin-top: 0; max-width: 78ch; font-size: var(--text-sm); line-height: 1.5; }
+
+details.menu { position: relative; }
+details.menu > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; background: #fff; border: 1px solid var(--line-strong); color: #33404f;
+  padding: 0 14px; min-height: var(--tap); border-radius: var(--radius-sm); font-size: var(--text-sm); user-select: none; }
+details.menu > summary::-webkit-details-marker { display: none; }
+details.menu > summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+details.menu[open] > summary { border-color: var(--accent); color: var(--accent-strong); background: #f6fafc; }
+.menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 190px; background: #fff; border: 1px solid var(--line-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.menu-pop button { text-align: left; background: transparent; border: 0; padding: 0 12px; min-height: var(--tap); border-radius: 8px; cursor: pointer; color: var(--ink); font-size: var(--text-sm); }
+.menu-pop button:hover { background: #eef2f5; }
+.menu-pop button.danger, button.danger { color: #a3281d; }
+.menu-pop button.danger:hover { background: #fdecea; }
+
+.sess-drug { flex: 1 1 100%; }
+.drug-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
+.drug-card { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; background: #fff; border: 1px solid var(--line-strong); border-radius: var(--radius-md);
+  padding: 12px 16px; min-height: var(--tap); cursor: pointer; color: var(--ink); transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.drug-card:hover { border-color: var(--accent); }
+.drug-card .dc-name { font-size: var(--text-md); font-weight: 600; }
+.drug-card .dc-sub { font-size: var(--text-xs); color: var(--muted); }
+.drug-card[aria-pressed="true"] { border: 2px solid var(--accent); padding: 11px 15px; background: #f6fafc; box-shadow: var(--shadow-sm); }
+
+/* ---------- result tiles (every drug) ---------- */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
+.tiles > div { display: flex; flex-direction: column; min-width: 0; }   /* the result blocks are the grid items, so `order` (lead tile first) applies */
+.tiles > div:empty { display: none; }
+.tiles > div > .tile { flex: 1 1 auto; }
+.tile { display: flex; flex-direction: column; gap: 10px; padding: var(--sp-4) var(--sp-5); border: 1px solid var(--line); border-radius: var(--radius-md); background: #fbfcfd; min-width: 0; }
+.tile-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.tile-name { font-size: var(--text-sm); font-weight: 600; color: var(--ink-strong); }
+.tile-sub { font-size: var(--text-xs); color: var(--muted); }
+.tile-v { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.tile-v .num { font: 600 44px/1 var(--mono); letter-spacing: -1px; color: var(--ink-strong); }
+.tile-v .unit { font-size: var(--text-md); color: var(--muted); }
+.tile-v .rng { font: 500 15px var(--mono); color: var(--muted); }
+.tile-c { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: var(--text-sm); color: #3b43a3; }
+.tile-c b { font: 600 16px var(--mono); }
+.tile-cr { font: 500 14px var(--mono); color: #5c63b5; }
+.tile-cmark { width: 12px; height: 12px; border: 2.5px solid #4a52b8; border-radius: 6px; box-sizing: border-box; flex: 0 0 auto; }
+.tile-line { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); border-top: 1px solid var(--line); padding-top: 10px; }
+.tile-note { font-size: var(--text-xs); color: var(--muted); background: #f0f4f7; border-radius: 8px; padding: 8px 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip-p { flex: 1 1 120px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: #fff; }
+.chip-l { font-size: var(--text-xs); color: var(--muted); }
+.chip-v { font: 600 22px/1.25 var(--mono); color: var(--ink-strong); }
+.chip-s { font-size: var(--text-xs); color: var(--muted); }
+/* range bar: measured interval solid, corrected interval outlined, the window a dashed band; all on one scale */
+.rb { display: flex; flex-direction: column; gap: 4px; }
+.rb-track { position: relative; background: #f0f4f7; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.rb-win { position: absolute; top: 0; bottom: 0; background: #dceef2; border-left: 1.5px dashed #5fa3b2; border-right: 1.5px dashed #5fa3b2; box-sizing: border-box; }
+.rb-int { position: absolute; top: 8px; height: 11px; border-radius: 6px; background: var(--accent); }
+.rb-med { position: absolute; top: 4px; width: 3px; height: 19px; margin-left: -1.5px; border-radius: 2px; background: var(--ink-strong); }
+.rb-cint { position: absolute; top: 28px; height: 11px; border-radius: 6px; background: #c7cbee; }
+.rb-cmed { position: absolute; top: 25px; width: 12px; height: 17px; margin-left: -6px; border: 2.5px solid #4a52b8; border-radius: 9px; background: #fff; box-sizing: border-box; }
+.rb-ticks { position: relative; height: 16px; }
+.rb-ticks span { position: absolute; transform: translateX(-50%); font: 500 12px var(--mono); color: var(--muted); }
+
+/* ---------- workspace: inputs left, results right on wide screens ---------- */
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+.col-in, .col-out { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
+@media (min-width: 1100px) {
+  .workspace { grid-template-columns: minmax(0, 440px) minmax(0, 1fr); }
+  .col-in { position: sticky; top: var(--sp-4); }
+}
+
+/* ---------- stepper links, smooth scroll ---------- */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+.card { scroll-margin-top: var(--sp-4); }
+.stepper a.step { color: var(--ink); text-decoration: none; border-radius: 8px; padding: 2px 6px; margin: -2px -6px; }
+.stepper a.step:hover { background: var(--accent-soft); color: var(--accent-strong); }
+
+/* ---------- phone: the Run bar stays in reach (inside the safe area) ---------- */
+@media (max-width: 640px) {
+  #runBar { position: sticky; bottom: 0; z-index: 20; background: #fff; margin: 0 calc(var(--sp-3) * -1); padding: var(--sp-3) var(--sp-3) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); box-shadow: 0 -6px 14px rgba(13,21,32,0.06); }
+}
+
+/* ---------- phone header: one compact row of help links ---------- */
+@media (max-width: 640px) {
+  .app .nav { flex-wrap: nowrap; width: 100%; justify-content: space-between; margin-right: 0; }
+  .app .nav button { padding: 0 8px; font-size: 13.5px; }
+}

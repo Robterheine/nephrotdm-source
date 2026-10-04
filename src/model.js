@@ -36,6 +36,7 @@
     label: 'Mycophenolic acid',
     article: 'de Winter BCM, van Gelder T, Glander P, et al. Population Pharmacokinetics of Mycophenolic Acid: A Comparison between Enteric-Coated Mycophenolate Sodium and Mycophenolate Mofetil in Renal Transplant Recipients. Clin Pharmacokinet 2008;47(12):827–838.',
     backgroundLabel: 'MPA TDM background',
+    card: { name: 'Mycophenolic acid', sub: 'AUC₀–₁₂ₕ · de Winter 2008' },
     // the one-page report (src/report.js)
     report: {
       lead: 'auc',

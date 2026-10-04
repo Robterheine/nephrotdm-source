@@ -74,7 +74,7 @@ enters the regimen; the app shows consequences. This rule is absolute and is tes
 
 ```bash
 cd mpa-tdm
-npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (39) && test_report.js (9); all must stay green
+npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (39) && test_report.js (9) && test_refresh.js (13); all must stay green
 npm run build                 # == node build.mjs  → nephrotdm.html (the deliverable)
 node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, tacrolimus and everolimus blocks)
 ```
@@ -183,6 +183,7 @@ src/
                           steady state, blood transform, exposure). Also reached only through `spec.custom` hooks. `spec.ui` carries its
                           presentation flags (and tacrolimus's): noun, weight, predDose, occasions, badge, chartTitle, shrinkEta, modelLine.
   texts_evr.js            Everolimus texts and result/report/explorer sentences; registers ECU.drugTexts.evr (ui.js reads the registry).
+  fonts.css               IBM Plex (Sans variable, Mono 500/600), Latin subset, embedded as data URIs (SIL OFL); the build inlines it before app.css.
   report.js               The one-page A4 report for every drug: ECU.report.build(ctx), pure (ui.js builds ctx from the run snapshot). Per-drug facts are in `spec.report` (lead tile, scope, window source, reading notes, short citation). Greyscale-safe, nothing under 12 px.
   author_photo.js         The author photo (inline WebP, ~39 KB base64) shown at the bottom of About; the same image as in complementtdm.
   parallel.js             Runs the independent MCMC chains of a fit on a pool of Web Workers built from the page's own inlined
@@ -216,6 +217,7 @@ tests/
   harness.js              Minimal xUnit: t(), assert(), eq(), near(), throws(),
                           rejects(), truthy(), falsy(), runAll() (async). Exit code
                           is wired: a failing suite fails the process.
+  test_refresh.js         The visual refresh (13 tests): fonts, tap size, header and Session menu, one primary action, drug cards, result tiles, workspace, stepper, phone.
   test_report.js          The one-page report (9 tests): order, citations, per-drug tiles, escaping, safety notes, greyscale and type size, print setup.
   test_everolimus.js      The everolimus suite (39 tests): matrix-exponential and RK4 oracles, the §3.5 reference table, Eq. 3, NONMEM fixtures
                           (structure and POSTHOC), worker pool, wiring, copy rules, the UI-text snapshot of MPA and tacrolimus, regression record.
@@ -383,7 +385,7 @@ S1/Ω-approximation robustness arms.
 
 ## 11. Open items (updated for v1.4.0, 3 October 2026)
 
-- **Everolimus:** the human review (`docs/VERIFICATION_TEAM.md`, addendum written) and publishing are open; the page is 407.5 KB (the author photo is ~39 KB of it), above the ~350 KB budget (owner accepted 359 KB, not yet this size); no interaction field, no transplant-date field and no AUC window by owner decision.
+- **Everolimus:** the human review (`docs/VERIFICATION_TEAM.md`, addendum written) and publishing are open; the page is 518.8 KB (fonts 82 KB, author photo 39 KB), above the ~350 KB budget (owner accepted growth for the fonts); no interaction field, no transplant-date field and no AUC window by owner decision.
 - **Tacrolimus:** standard kidney window shipped (trough 4–12, AUC 150–210; AUC upper bound is the app's choice, `docs/SOURCE_ANALYSIS_BRUNET_2019.md`); no transplant-date field (first-weeks bias is stated in the text, not
   detected), once-daily and other schedules are refused, not modelled. See `docs/ADVERSARIAL_AUDIT_V121.md` for the judgement items.
 

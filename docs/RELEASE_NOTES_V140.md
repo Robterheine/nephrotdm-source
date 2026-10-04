@@ -65,6 +65,23 @@ The app is published at https://robterheine.github.io/nephrotdm/ (repo `Robterhe
 - Page size 407.5 KB (about 39 KB of it is the photo).
 - Tests: `About: tacrolimus and everolimus each get reference values ...` and `About: the author photo sits at the bottom ...` (both red before, and red again when undone), plus the em-dash, dose-advice and validation-caveat rules on the new text. The MPA/tacrolimus text snapshot was re-recorded after checking that the only differences were the new tacrolimus sections and the table wrappers.
 
+## Visual refresh (4 October 2026)
+
+Agreed with the owner after the design canvas and an Apple-style UX review; no dark mode, page-size growth accepted, fonts embedded.
+- **Fonts:** IBM Plex Sans (one variable file, weights 400 to 600) and IBM Plex Mono (500, 600), Latin subset, embedded in `src/fonts.css` (82 KB) so the offline page looks the same everywhere; no network request (a test forbids any). Licence: SIL OFL 1.1, named in the file. Glyphs outside Latin-1 (subscript digits, inequality signs) fall back to the system font.
+- **Tokens:** base text 16 px, small text 12.5 px and 14 px, rounder radii, one accent (#0b6e85), every control at least 44 px tall (`--tap`), a 3 px focus ring.
+- **Header:** brand mark and version chip, the help links, a **Session menu** (Export, Import, Clear; Clear is marked destructive; it closes after a choice, on an outside click and on Escape), and **Print report as a secondary button**. All ids the code binds are unchanged.
+- **One primary action:** in the workspace only Run forecast is filled; Add dose, Add sample and Explore are secondary.
+- **Drug cards** replace the select: name, analyte and model per drug (`spec.card`), the active one pressed. The select stays in the page, hidden from sight and from assistive technology, as the single source of truth; a card press goes through its own change handler (confirmation, window reset), so nothing about switching drugs changed.
+- **Results as tiles for every drug:** large median and interval, the haematocrit-corrected value beside it, a range bar (measured interval solid, corrected outlined, the window a dashed band, one scale), and the same plain sentence as the report ("81% chance the trough is within the window 3.00 to 8.00 µg/L…") with three plain chips (In the window, Above the lower bound, Below the upper bound) instead of P(...) symbols. The lead tile follows the drug (trough for everolimus). The dose explorer uses the same tiles.
+- **Card 3 answers first:** Run and status, then the tiles and the notes, then the chart.
+- **Two-column workspace** from 1100 px (inputs left, results right) in a 1200 px column shared with the header and footer; one column below, in the original order. The inputs column is sticky.
+- **Stepper** is now four links to the cards (smooth scroll, off for reduced motion).
+- **Phone:** numeric fields open the decimal keypad, the Run bar stays at the bottom inside the safe area, the help links share one compact row, and a hidden-select overflow that widened the page to 399 px was fixed (the utility class now wins over the field and phone rules).
+- **First-visit notice** now announces everolimus and the one-page report (new storage key, so people who dismissed the old notice see it once).
+- Tests: `tests/test_refresh.js` (13 tests). Each piece was made to fail before it was trusted: tap size, base type, focus ring, a primary Print button or Explore button, the tiles container, a dead stepper link, missing decimal keypad, the notice key, a card press that bypasses the change event, a non-sticky Run bar, the column width, and the hidden-select rule. One of my own checks was too loose (`width` also matched `max-width`) and was tightened after a sabotage stayed green.
+- Page size is now 518.8 KB (fonts 82 KB, photo 39 KB).
+
 ## One-page A4 report for all three drugs (4 October 2026)
 
 The printed report was rebuilt (`src/report.js`, replacing the two old report builders in `ui.js`) after a review that found it complete but slow to read: the result was the seventh of ten blocks, the findings were a dense table, and the chart came last with no window drawn. The design was agreed on the canvas first.
