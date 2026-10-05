@@ -348,7 +348,7 @@
       { id: 'ht', name: 'Height', type: 'number', required: true, units: 'cm', min: 120, max: 220, step: 'any',
         help: 'Height in cm, used to compute fat-free mass.' },
       { id: 'cyp3a5', name: 'CYP3A5 genotype', type: 'select', required: false,
-        options: [{ value: 'unknown', label: 'unknown (non-expresser assumed)' },
+        options: [{ value: 'unknown', label: 'unknown (non-expresser)' },
                   { value: 'nonexpresser', label: 'non-expresser (*3/*3)' },
                   { value: 'expresser', label: 'expresser (*1/*1 or *1/*3)' }],
         default: 'unknown',

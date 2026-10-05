@@ -116,9 +116,10 @@ main.layout { max-width: var(--col); margin: 0 auto; padding: var(--sp-5); displ
 
 /* ---------- patient card (sessionbar) ---------- */
 .sessionbar .sess-row { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-end; }
-.sessionbar .sess-field { display: flex; flex-direction: column; gap: 3px; }
+.sessionbar .sess-field { display: flex; flex-direction: column; gap: 3px; flex: 1 1 270px; min-width: 0; }
+.sessionbar .sess-field.sf-num { flex: 1 1 130px; }
 .sessionbar label.f { font-size: var(--text-xs); font-weight: 600; color: var(--muted); }
-.sessionbar input, .sessionbar select { width: 160px; min-width: 120px; }
+.sessionbar input, .sessionbar select { width: 100%; min-width: 0; }
 .sessionbar .lbl-help { display: flex; align-items: center; gap: 4px; }
 .sessionbar .lbl-help button.info { background: transparent; border: none; cursor: pointer; font-size: 15px; color: var(--muted); padding: 0 2px; }
 .sessionbar .info[aria-expanded="true"] { color: var(--accent); }
@@ -127,8 +128,8 @@ main.layout { max-width: var(--col); margin: 0 auto; padding: var(--sp-5); displ
 .sessionbar details.sess-fold summary::-webkit-details-marker { display: none; }
 .sessionbar .fold-val { font-weight: 600; }
 .sessionbar .fold-edit { color: var(--accent); font-size: var(--text-xs); cursor: pointer; }
-.sessionbar .row2 { display: flex; gap: var(--sp-4); margin-top: var(--sp-2); }
-.sessionbar .row2 > div { flex: 1; }
+.sessionbar .row2 { display: flex; flex-wrap: wrap; gap: var(--sp-4); margin-top: var(--sp-2); }
+.sessionbar .row2 > div { flex: 1 1 340px; min-width: 0; }   /* the formulation names are the longest option text in the app */
 
 /* ---------- generic folds (chevron affordance) ---------- */
 details > summary { cursor: pointer; list-style: none; }
@@ -164,10 +165,12 @@ details.help > summary { font-weight: 600; color: #37424f; font-size: var(--text
 /* ---------- form rows ---------- */
 .inline { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
 .row3 { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
-.row3 > div { display: flex; flex-direction: column; gap: 3px; }
+.row3 > div { display: flex; flex-direction: column; gap: 3px; flex: 1 1 150px; min-width: 0; }
+.row3 > div.f-dt { flex: 1 1 230px; }
+.row3 > div.f-sel { flex: 1 1 230px; }
 .row3 label.f { font-size: var(--text-xs); font-weight: 600; color: var(--muted); }
-.row3 input { width: 140px; }
-.row3 input[type="number"] { width: 120px; }
+.row3 input, .row3 select { width: 100%; }
+#iv-interval { min-width: 190px; }
 
 /* ---------- notes & banners ---------- */
 .note { font-size: var(--text-sm); color: #3f4c5c; padding: var(--sp-2) var(--sp-3);
@@ -483,8 +486,8 @@ details.menu[open] > summary { border-color: var(--accent); color: var(--accent-
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 .card { scroll-margin-top: var(--sp-4); }
-.stepper a.step { color: var(--ink); text-decoration: none; border-radius: 8px; padding: 2px 6px; margin: -2px -6px; }
-.stepper a.step:hover { background: var(--accent-soft); color: var(--accent-strong); }
+.stepper a.step { color: var(--ink); text-decoration: none; }
+.stepper a.step:hover { color: var(--accent-strong); text-decoration: underline; }
 
 /* ---------- phone: the Run bar stays in reach (inside the safe area) ---------- */
 @media (max-width: 640px) {

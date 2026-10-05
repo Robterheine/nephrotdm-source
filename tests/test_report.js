@@ -33,7 +33,7 @@ function ctxFor(drug, fit, over) {
     fit: fit, spec: spec, drugId: drug, inputsChanged: false, patientId: 'ID-042', weight: drug === 'tac' ? '80' : '80', usesWeight: drug === 'tac',
     form: drug === 'mpa' ? 'mmf' : null, formLabel: drug === 'mpa' ? 'MMF (mycophenolate mofetil)' : '', extra: extra, doses: [dose], obs: obs, ssMode: true,
     win: { lo: fit.winLo, hi: fit.winHi }, troughWin: { lo: fit.troughWin ? fit.troughWin.lo : null, hi: fit.troughWin ? fit.troughWin.hi : null },
-    settings: 'Dosing input: steady state · recency weighting: Off (all samples weighted equally)', advice: 'Advice typed by the clinician.', prepared: 'Dr Example',
+    settings: 'Dosing input: steady state · recency weighting: Off (all samples equal)', advice: 'Advice typed by the clinician.', prepared: 'Dr Example',
     now: '2026-10-04 09:30', version: '1.4.0', units: { auc: (spec.units || { auc: 'mg·h/L' }).auc, conc: (spec.units || { conc: 'mg/L' }).conc },
     notes: { convergence: '', shortHistory: '', shrink: '', anchor: '' }, fmtClock: clock, fmtC: fmtC
   }, over || {});

@@ -147,4 +147,36 @@ t('phone header: the help links share one compact row', function () {
   truthy(/\.app \.nav button \{[^}]*padding: 0 8px/.test(mob) && /\.app \.nav button \{[^}]*font-size: 13\.5px/.test(mob) && /\.app \.nav \{[^}]*flex-wrap: nowrap/.test(mob), 'compact nav on phones');
 });
 
+t('fields fit their text: inputs and selects fill their container (no fixed 140/160 px widths), containers are wide enough for the longest value, date fields get room for date, time and the calendar button', function () {
+  var flat = css.replace(/\n/g, ' ');
+  truthy(/\.sessionbar input, \.sessionbar select \{[^}]*width: 100%/.test(flat) && !/\.sessionbar input, \.sessionbar select \{[^}]*width: 160px/.test(flat), 'patient card fields fill their container');
+  truthy(/\.row3 input, \.row3 select \{[^}]*width: 100%/.test(flat) && !/\.row3 input \{ width: 140px/.test(flat), 'dosing rows too');
+  var basis = function (re) { var m = flat.match(re); truthy(m, 'rule ' + re); return +m[1]; };
+  truthy(basis(/\.sessionbar \.sess-field \{[^}]*flex: 1 1 (\d+)px/) >= 270, 'patient card selects: wide enough for the longest option (258 px measured)');
+  truthy(basis(/\.sessionbar \.sess-field\.sf-num \{[^}]*flex: 1 1 (\d+)px/) >= 130, 'numeric fields stay compact');
+  truthy(basis(/\.row3 > div\.f-dt \{[^}]*flex: 1 1 (\d+)px/) >= 230, 'date-time fields: date, time and calendar button (192 px measured)');
+  truthy(basis(/\.row3 > div \{[^}]*flex: 1 1 (\d+)px/) >= 150, 'other dosing fields');
+  truthy(/#iv-interval \{[^}]*min-width: (1[9]\d|2\d\d)px/.test(flat), 'the interval select');
+  truthy(basis(/\.row3 > div\.f-sel \{[^}]*flex: 1 1 (\d+)px/) >= 220, 'the sample-offset select (longest option measured at 204 px)');
+  truthy(/<div class="f-sel"><label class="f" for="obs-offset"/.test(html), 'obs-offset sits in an f-sel container');
+  var rec = html.match(/<select id="pt-recency"[\s\S]*?<\/select>/)[0].match(/<option[^>]*>([^<]*)<\/option>/g).map(function (o) { return o.replace(/<[^>]+>/g, '').length; });
+  truthy(Math.max.apply(null, rec) <= 36, 'the recency options are short enough for the narrow column: ' + rec.join(','));
+  ['dose-dt', 'ss-anchor', 'obs-dt'].forEach(function (id) { truthy(new RegExp('<div class="f-dt"><label class="f" for="' + id + '"').test(html), id + ' sits in an f-dt container'); });
+  truthy(/class="sess-field sf-num"/.test(html) && /sf-wide/.test(ui) && /sf-num/.test(ui), 'numeric fields are marked, generated ones too');
+  truthy(fs.existsSync(path.join(root, 'tools', 'audit_fields.js')) && /audit_fields/.test(read('README.md')), 'the field-fit audit tool exists and is documented');
+});
+
+t('select labels: a select cannot wrap, so every option label (in the page and in the specs) is at most 28 characters, which fits the 270 px a 320 px phone leaves', function () {
+  var long = [];
+  (html.match(/<select[\s\S]*?<\/select>/g) || []).forEach(function (sel) {
+    (sel.match(/<option[^>]*>([^<]*)<\/option>/g) || []).forEach(function (o) { var t = o.replace(/<[^>]+>/g, ''); if (t.length > 28) long.push(t); });
+  });
+  ['mpa', 'tac', 'evr'].forEach(function (id) {
+    M.covariateFields(id).forEach(function (c) { (c.options || []).forEach(function (o) { if (o.label.length > 28) long.push(id + ':' + o.label); }); });
+  });
+  eq(long.join(' | '), '', 'option labels over 28 characters');
+  truthy(/value="ecmps">EC-MPS \(enteric-coated\)</.test(html) && /value="off">Off \(all samples equal\)</.test(html), 'the shortened labels');
+  truthy(/Off \\\(\[\^\)\]\*\\\)/.test(read('src/report.js')), 'the report still prints "Off" without the parenthesis, whatever it says');
+});
+
 h.runAll().then(function (ok) { if (!ok) process.exit(1); }).catch(function (e) { console.error(e); process.exit(1); });

@@ -286,7 +286,7 @@
       if (Object.prototype.hasOwnProperty.call(staticRows, c.id)) return;
       if (!host) return;
       var wrap = document.createElement('div');
-      wrap.className = 'sess-field';
+      wrap.className = 'sess-field ' + (c.type === 'select' ? 'sf-wide' : 'sf-num');
       wrap.id = 'covrow-' + c.id;
       if (c.type === 'select' && c.options) {
         wrap.innerHTML =

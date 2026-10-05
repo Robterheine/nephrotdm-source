@@ -111,7 +111,7 @@
       { id: 'form', name: 'Formulation', type: 'select', required: true,
         options: [
           { value: 'mmf', label: 'MMF (mycophenolate mofetil)' },
-          { value: 'ecmps', label: 'EC-MPS (enteric-coated mycophenolate sodium)' }
+          { value: 'ecmps', label: 'EC-MPS (enteric-coated)' }
         ],
         default: 'mmf',
         help: 'The formulation is this model’s covariate: it switches the absorption rate, the lag-time structure and the dose conversion (×0.739 MMF, ×0.936 EC-MPS to MPA mg). Doses are entered as prescribed, in product mg.' }

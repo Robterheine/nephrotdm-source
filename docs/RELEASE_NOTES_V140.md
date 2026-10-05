@@ -119,3 +119,6 @@ sentence and a registry lookup removed (each failed the copy or registry test); 
 - The page is 359.4 KB, above the roughly 350 KB budget set in the hand-off (owner accepted this on 3 October).
 - The calibration shows that the sampler is far past convergence (smallest effective sample size above 15 000 against a bar of 400); `mcmcIters` could be lowered if speed ever matters.
 - The human review of the whole app (`VERIFICATION_TEAM.md`) is still open; an everolimus addendum is listed there.
+
+## Fields fit their text
+The "Latest dose on" date-and-time field cut off its time. An audit of every field (`tools/audit_fields.js`, run at 320, 375, 768, 1100, 1280 and 1920 px for all drugs and schedule modes) found more of the same. Fields now fill their container instead of using fixed widths, long option labels are shortened to 28 characters or fewer, and the stepper no longer overlaps its connector lines. The audit shows no clipped field at any width. Two tests in `tests/test_refresh.js` guard this.

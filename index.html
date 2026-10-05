@@ -74,14 +74,14 @@
           <option value="evr">Everolimus (adult kidney)</option>
         </select>
       </div>
-      <div class="sess-field">
+      <div class="sess-field sf-num">
         <div class="lbl-help">
           <label class="f" for="pt-wt">Weight (kg)</label>
           <button type="button" class="info" data-help="wt" aria-label="What is the weight field for?" aria-expanded="false" title="Body weight in kg">ⓘ</button>
         </div>
         <input type="number" inputmode="decimal" id="pt-wt" min="25" max="300" step="0.5" placeholder="e.g. 70" title="Body weight in kg">
       </div>
-      <div class="sess-field" id="ageRow" style="display:none">
+      <div class="sess-field sf-num" id="ageRow" style="display:none">
         <div class="lbl-help">
           <label class="f" for="pt-age">Age (years)</label>
           <button type="button" class="info" data-help="age" aria-label="What is the age field for?" aria-expanded="false" title="Age in years">ⓘ</button>
@@ -152,7 +152,7 @@
           </div>
           <select id="pt-form" title="The formulation is this model’s covariate: it switches the absorption rate, the lag-time structure and the dose conversion (×0.739 MMF, ×0.936 EC-MPS to MPA mg). Doses are entered as prescribed, in product mg.">
             <option value="mmf">MMF (mycophenolate mofetil)</option>
-            <option value="ecmps">EC-MPS (enteric-coated mycophenolate sodium)</option>
+            <option value="ecmps">EC-MPS (enteric-coated)</option>
           </select>
         </div>
       </div>
@@ -174,7 +174,7 @@
       <div class="tbl-wrap"><table class="data" id="doseTable"></table></div>
       <form class="inline no-print" id="doseForm" novalidate>
         <div class="row3" style="margin-top:8px">
-          <div><label class="f" for="dose-dt">Date &amp; time</label><input type="datetime-local" id="dose-dt" title="Scheduled date and time of the administration"></div>
+          <div class="f-dt"><label class="f" for="dose-dt">Date &amp; time</label><input type="datetime-local" id="dose-dt" title="Scheduled date and time of the administration"></div>
           <div><label class="f" for="dose-amt" id="doseAmtLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="dose-amt" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Dose in mg as prescribed"></div>
           <div id="dosePredWrap" style="display:none"><label class="f" for="dose-pred">Prednisolone (mg/day), if changed</label><input type="number" inputmode="decimal" id="dose-pred" min="0" step="any" placeholder="patient value" title="Leave empty to use the prednisolone dose of the patient card. Enter a value only if the steroid dose was different on the day of this administration."></div>
           <div style="align-self:end"><button class="secondary" type="submit" id="doseAdd" style="width:100%" title="Add this dose to the schedule">Add dose</button></div>
@@ -186,7 +186,7 @@
       <div class="row3" style="margin-top:8px">
         <div><label class="f" for="ss-dose" id="ssDoseLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="ss-dose" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Maintenance dose per administration, as prescribed"></div>
         <div><label class="f" for="ss-interval">Interval (hours)</label><input type="number" inputmode="decimal" id="ss-interval" min="1" max="48" step="1" placeholder="e.g. 12" title="Dosing interval in hours"></div>
-        <div><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
+        <div class="f-dt"><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
       </div>
       <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”.</div>
     </div>
@@ -196,8 +196,8 @@
     <div class="note warn no-print" id="ecmpsSampleNote" hidden>EC-MPS: absorption is delayed and highly variable, the source model’s own conclusion is that sparse limited sampling is expected to be unreliable for EC-MPS. Prefer more samples spread across the dosing interval (e.g. 1.5, 2, 4, 6, 8 h), and treat trough-only results with particular caution.</div>
     <div class="tbl-wrap"><table class="data" id="obsTable"></table></div>
     <form class="inline no-print" id="obsForm" novalidate>
-      <div class="row3" style="margin-top:8px">          <div><label class="f" for="obs-dt">Date &amp; time</label><input type="datetime-local" id="obs-dt" title="Time the blood sample was drawn"></div>
-        <div><label class="f" for="obs-offset">or hours after last dose</label>
+      <div class="row3" style="margin-top:8px">          <div class="f-dt"><label class="f" for="obs-dt">Date &amp; time</label><input type="datetime-local" id="obs-dt" title="Time the blood sample was drawn"></div>
+        <div class="f-sel"><label class="f" for="obs-offset">or hours after last dose</label>
           <select id="obs-offset" title="Fill the sample time as an offset from the last dose">
             <option value="">(none)</option>
             <option value="0.33">+20 min</option>
@@ -257,8 +257,8 @@
           <button type="button" class="info" data-help="recency" aria-label="What does weighting of older samples do?" aria-expanded="false" title="Optional: give older measurements a larger residual error, so they influence the individual fit less than recent ones. Off by default.">ⓘ</button>
         </div>
         <select id="pt-recency" title="Optional: give older measurements a larger residual error, so they influence the individual fit less than recent ones. Off by default.">
-          <option value="off">Off (all samples weighted equally)</option>
-          <option value="low">Low (residual error up to ×1.5 for older samples)</option>
+          <option value="off">Off (all samples equal)</option>
+          <option value="low">Low (up to ×1.5)</option>
           <option value="medium">Medium (up to ×2)</option>
           <option value="high">High (up to ×3)</option>
         </select>

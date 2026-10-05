@@ -238,6 +238,7 @@ tools/
   record_tac_regression.mjs  Re-records tests/tac_v121_regression.json (bit-identity baseline for optimisations).
   calibrate_storset.mjs   Tacrolimus simulation–recovery study (9 cells; results in docs/CALIBRATION_RESULTS_STORSET.md).
   calibrate_evr.mjs       Everolimus simulation–recovery study (12 cells; docs/CALIBRATION_RESULTS_EVR.md, tables by assemble_calibration_evr.mjs).
+  audit_fields.js         Browser audit: does the text in every visible field fit its box? `window.auditFields()` after loading the built page; run it at 320 to 1920 px, for every drug and schedule mode (it found the clipped date and select fields of 4 Oct).
   record_evr_regression.mjs, record_ui_snapshot.mjs   Re-record tests/evr_regression.json; record the MPA/tacrolimus UI text (only BEFORE a deliberate change).
   evr_prototype/          Matrix-exponential and RK4 oracles and the prototype closed form for everolimus (used by the tests).
   nonmem_verify/evr/      Everolimus NONMEM check: `bash tools/nonmem_verify/evr/run_evr.sh` (structure + POSTHOC); export_golden_evr.mjs writes the test fixtures.
