@@ -1,88 +1,71 @@
-# NephroTDM — model-informed TDM for kidney transplantation and nephrology (MPA, tacrolimus, everolimus)
+# NephroTDM: model-informed TDM for kidney transplantation and nephrology
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Live app](https://img.shields.io/badge/live%20app-open-0e7490.svg)](https://robterheine.github.io/nephrotdm/)
 
-**Try it:** <https://robterheine.github.io/nephrotdm/>, or download [`nephrotdm.html`](nephrotdm.html) and open it in a browser (works from `file://`, offline).
+**Try it:** <https://robterheine.github.io/nephrotdm/>, or download [`nephrotdm.html`](nephrotdm.html) and open it in a browser (it works from `file://`, offline).
 **Research use only. Not a medical device.** The app never suggests, recommends or optimizes a dose or interval.
 
-> **Read this file before touching anything.** It is the cold-start handover for this
-> app: after reading it, an AI agent (or human) should know exactly what the app is,
-> what it must never do, how it is built, and how to change it safely.
+> **Read this file before touching anything.** It is the cold-start handover for this app. After reading it, an AI agent or a person should know what the app is,
+> what it must never do, how it is built and how to change it safely.
 >
-> **v1.5.0 — pediatric MPA and pediatric tacrolimus** (children with a kidney transplant; Heida 2024, and Schijvens 2020 refitted in Heida 2026). Five cards:
-> MPA adult, **MPA pediatric** (weight, albumin, dose in mg of MMF, occasion effect per sampled day), tacrolimus adult, **tacrolimus pediatric** (weight, haematocrit,
-> capsule or suspension chosen **per dose**, window judged on the corrected value), everolimus. Closed-form engines checked against NONMEM 7.6 (structure, POSTHOC, BAYES),
-> an independent calibration and benchmark replication; one result is open (tacrolimus 3-point NRMSE, accepted as a documented point). Hand-off: `docs/HANDOFF_PEDIATRIC.md`;
-> release notes: `docs/RELEASE_NOTES_V150.md`; evidence: `docs/VERIFICATION_PEDIATRIC.md`, `docs/NONMEM_CROSSCHECK_PEDIATRIC.md`, `docs/CALIBRATION_RESULTS_PEDIATRIC.md`;
-> sources: `docs/SOURCE_ANALYSIS_PEDIATRIC.md`. Pediatric specifics are in §14. The three existing drugs are unchanged (bit-identity records V16, V16b, everolimus, and a byte-level
-> snapshot of MPA and tacrolimus UI text, re-recorded for the version number only).
+> **What it is now (v1.5.0).** Five population PK models for kidney transplantation, one card each: mycophenolic acid for adults (de Winter 2008) and for children
+> (Heida 2024), tacrolimus for adults (Størset 2014) and for children (Schijvens 2020, refitted in Heida 2026), and everolimus for adults (Zwart 2021, Model 3).
+> For one patient, each estimates the steady-state AUC₀–₁₂ₕ and a trough with 5–95% intervals, from the covariates and the samples entered. Tacrolimus and everolimus
+> values are also shown corrected to a reference haematocrit. The window the probabilities refer to is the clinician's input.
 >
-> **v1.4.0 — third drug: everolimus** (adult kidney recipients, twice daily; Zwart 2021 Model 3). Steady-state AUC₀–₁₂ₕ and trough, as measured and
-> corrected to haematocrit 0.38, LC-MS/MS only, trough windows 3–8 and 6–10 µg/L and **no AUC window** (the consensus gives none). Closed-form PK verified against
-> NONMEM 7.6 (structure 5e-9, POSTHOC 1e-6). Hand-off and decisions: `docs/HANDOFF_EVEROLIMUS_M3.md`; release notes: `docs/RELEASE_NOTES_V140.md`; evidence:
-> `docs/CALIBRATION_RESULTS_EVR.md`; sources: `docs/SOURCE_ANALYSIS_EVR_CONSENSUS_ZWART.md`. Everolimus specifics are in §13. MPA and tacrolimus are unchanged
-> (bit-identity records V16 and V16b, and a byte-level snapshot of their UI text).
+> **How well it is checked.** The closed-form engines match NONMEM 7.6 (structure to 5e-9 and POSTHOC for every drug, and a Bayesian comparison for adult MPA and the pediatric models). Every model has a
+> calibration study. The pediatric models were also reviewed by three independent seats (pharmacometrician, UI designer, clinical pharmacologist), each with the verdict
+> "pass with comments". No named human has signed `docs/VERIFICATION_TEAM.md` yet. Open points are in §11.
 >
-> **v1.3.0 (1.2.0 and 1.2.1 were never published) — second drug.** The app is now **NephroTDM** and carries two models: mycophenolic acid
-> (de Winter 2008, unchanged — fixed-seed fits are bit-identical to v1.1.1, test V16) and **tacrolimus
-> for adult kidney recipients (Størset 2014)**: steady-state AUC₀–₁₂ₕ **and trough**, each as measured and
-> corrected to haematocrit 0.35, LC-MS/MS or Abbott CMIA. Plan: `docs/IMPLEMENTATION_PLAN_STORSET_2014.md`
-> (with its execution log); release notes: `docs/RELEASE_NOTES_V120.md`; evidence:
-> `docs/CALIBRATION_RESULTS_STORSET.md`. **No tacrolimus therapeutic window ships by default** (the IATDMCT
-> consensus text was not available — plan D6); the user sets the AUC and trough windows.
-> The rest of this README describes the MPA model and the shared engine; tacrolimus specifics are in §12.
+> **Form factor.** A single-file, dependency-free, offline HTML app. The deliverable is `nephrotdm.html` (about 610 KB with the embedded fonts),
+> generated by `build.mjs` from `index.html` and `src/*`. It was `mpa-tdm.html` up to v1.1.1; that file is superseded. It must keep working when opened from
+> `file://`: no server, no network, no CDNs, no npm packages in the artifact.
 >
-> **Form factor:** a **single-file, dependency-free, offline HTML app**. The deliverable
-> is `nephrotdm.html` (~290 KB; it was `mpa-tdm.html` up to v1.1.1 — that file is superseded), generated by
-> `build.mjs` from `index.html` + `src/*`.
-> It must keep working when opened directly from `file://` — no server, no network,
-> no CDNs, no npm packages in the artifact.
+> **Where the detail is.** Release notes per version (`docs/RELEASE_NOTES_V*.md`); one hand-off per added model (`docs/HANDOFF_EVEROLIMUS_M3.md`,
+> `docs/HANDOFF_PEDIATRIC.md`); the evidence next to them (`docs/CALIBRATION_RESULTS*.md`, `docs/NONMEM_CROSSCHECK*.md`, `docs/VERIFICATION_*.md`,
+> `docs/REVIEW_PEDIATRIC_*.md`); the source readings (`docs/SOURCE_ANALYSIS_*.md`, `docs/MODEL_ANALYSIS_*.md`).
 >
-> **Status (v1.1.1):** **the de Winter 2008 model is integrated and live.** Two-compartment
-> MPA PK with first-order absorption + lag time, formulation as the covariate (MMF /
-> EC-MPS, trimodal morning tlag mixture for EC-MPS), log-scale residual error, and the
-> AUC₁₂ contract throughout. 104 tests green. **v1.1.0** (see `docs/RELEASE_NOTES_V110.md`)
-> is the result of the independent methods audit (`docs/METHODS_AUDIT_V101.md`, with a
-> resolution status per finding): closed-form propagation and exact steady state (a fit takes
-> ≈0.5 s), a converged sampler with R̂/ESS diagnostics, the EC-MPS membership-sampler fix,
-> report and warning fixes, and the removal of the assay / LLOQ / error-multiplier / IV inputs
-> (censored samples are no longer supported). Evidence: `docs/CALIBRATION_RESULTS.md` (8 cells ×
-> 100 patients, all in band), `docs/NONMEM_CROSSCHECK.md` (structural model = NONMEM 7.6 to
-> 5e-9; POSTHOC and Bayesian comparison), `tests/golden.json` and `tests/nonmem_golden.json`.
-> Scope and caveats live in the About model card. **v1.1.1** fixes the phone layout (`docs/RELEASE_NOTES_V110.md`).
-> **Published:** the app at https://robterheine.github.io/nephrotdm/ (repo `Robterheine/nephrotdm`, `main`, only `index.html` = the built
-> `nephrotdm.html`, Pages from the root) and this source in `Robterheine/nephrotdm-source` (`main`), the same layout as `complementtdm` /
-> `complementtdm-source`. The earlier MPA-only page (`mpatdm`, 1.1.1) was retired. To republish: `npm run build`, copy `nephrotdm.html`
-> to `index.html` in a clone of `nephrotdm`, push.
+> **History in short.**
+> - **1.5.0** adds the two pediatric models (§14). The adult drugs are unchanged: bit-identity records V16, V16b and the everolimus record, a byte-level
+>   snapshot of the MPA and tacrolimus UI text, and a browser comparison with 1.4.0.
+> - **1.4.0** adds everolimus (§13), the one-page A4 report, the visual refresh with embedded IBM Plex fonts, and the field-fit audit.
+> - **1.3.0** adds adult tacrolimus (§12) and renames the app NephroTDM. (1.2.0 and 1.2.1 were never published.)
+> - **1.1.x** is the de Winter 2008 MPA model going live, together with the result of the methods audit: closed-form propagation and exact steady state (about 0.5 s
+>   per fit), a converged sampler with R̂/ESS diagnostics, the EC-MPS membership-sampler fix, and the removal of the assay, LLOQ, error-multiplier and IV inputs
+>   (censored samples are not supported). Evidence: `docs/METHODS_AUDIT_V101.md`, `docs/CALIBRATION_RESULTS.md`, `docs/NONMEM_CROSSCHECK.md`, `tests/golden.json`,
+>   `tests/nonmem_golden.json`.
+>
+> **Published.** The app is at https://robterheine.github.io/nephrotdm/ (repository `Robterheine/nephrotdm`, `main`, only `index.html`, which is the built
+> `nephrotdm.html`; Pages from the root). The source is in `Robterheine/nephrotdm-source` (`main`), the same layout as `complementtdm` and `complementtdm-source`.
+> The earlier MPA-only page (`mpatdm`) was retired. To republish: edit this folder, run `npm test` and `npm run build`, copy the project into a clone of
+> `nephrotdm-source` (leaving out `.git`, `mpa-tdm.html` and `docs/AUTHOR_QUERY*`), copy that clone's freshly built `nephrotdm.html` to `index.html` in a clone of
+> `nephrotdm`, then commit and push both. Never push without the owner's go.
 
-## 1. What this app is — and is not
+## 1. What this app is, and is not
 
-**Is:** a clinician-facing TDM tool for mycophenolic acid (MPA, the active drug of
-MMF / EC-MPS). It estimates one specific patient's **steady-state AUC₀–12h with
-posterior uncertainty** — the AUC over a 12-hour dosing interval at steady state;
-regimens with another interval are reported as their 12-hour equivalent
-(AUC₁₂ = AUC₀₋ₓ × 12/x) — from an established population PK model plus limited
-sampling (e.g. a 3-point LSS), shows the probability that AUC lies inside a
-therapeutic window with **both a lower and an upper bound**, and lets the clinician
-**explore what an alternative maintenance dose would do** — at the fitted interval
-or a chosen alternative (12 or 24 h) — using that same fitted posterior. A predicted
-trough C(τ) is shown **for information only — there is no trough target** (per the
-IATDMCT consensus: trough correlates poorly with AUC and C0-guided adjustment is
-explicitly not recommended).
+**Is:** a clinician-facing TDM tool for kidney transplantation. For one specific patient it estimates the **steady-state AUC₀–12h with posterior uncertainty**, the AUC
+over a 12-hour dosing interval at steady state (a regimen with another interval is reported as its 12-hour equivalent, AUC₁₂ = AUC₀₋ₓ × 12/x). The input is an
+established population PK model plus limited sampling, for example a 3-point schedule. The app shows the probability that the exposure lies inside a window with
+**both a lower and an upper bound**, and lets the clinician **explore what a different maintenance dose would do**, at the fitted interval or a chosen alternative
+(12 or 24 h), using that same fitted posterior. The windows are the clinician's input; the app takes no position on them.
 
-**Is not, ever:** a dose advisor. No dose optimization, no titration logic, no
-label/SmPC regimens, no wording that implies the app recommends anything. The user
+Every drug also reports a trough. For MPA it is shown **for information only, because there is no trough target** (the IATDMCT consensus says trough correlates
+poorly with AUC and advises against C0-guided adjustment). Tacrolimus and everolimus have trough windows.
+
+This README grew with the app. §1 and §6 to §8 describe the engine and the adult MPA model, which came first; §12 to §14 say what is different for each later drug.
+
+**Is not, ever:** a dose advisor. No dose optimization, no titration logic, no label or SmPC regimens, no wording that implies the app recommends anything. The user
 enters the regimen; the app shows consequences. This rule is absolute and is tested.
 
-**Intended user:** clinical pharmacologist / TDM pharmacist / physician.
+**Intended user:** clinical pharmacologist, TDM pharmacist or physician.
 **Tone:** clinical, plain-language, cautious, cited.
 
 ## 2. Quick start
 
 ```bash
 cd mpa-tdm
-npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (39) && test_pediatric.js (64) && test_report.js (9) && test_refresh.js (16); all must stay green
+npm test                      # == run_all.js (111 MPA/engine tests) && test_tacrolimus.js (60) && test_everolimus.js (39) && test_pediatric.js (64) && test_report.js (9) && test_refresh.js (17); all must stay green
 npm run build                 # == node build.mjs  → nephrotdm.html (the deliverable)
 node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, tacrolimus, everolimus and the two pediatric blocks)
 ```
@@ -96,11 +79,11 @@ node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, 
 
 1. **Never edit `nephrotdm.html` by hand.** It is generated. Edit `index.html` and
    `src/*`, then `npm run build`.
-2. **Dependency-free and offline, forever.** No CDNs, no webfonts, no analytics, no
+2. **Dependency-free and offline, forever.** No CDNs, no remote fonts (the IBM Plex fonts are embedded as data URIs), no analytics, no
    `fetch` of external resources, no npm packages. The artifact works from `file://`.
-3. **Time is in HOURS everywhere in this app** — engine, ODE rates, grids, doses,
-   observations, charts, form fields, session JSON, report. Amounts are mg,
-   concentrations mg/L, AUC mg·h/L. **Do not port code from the complement-TDM app
+3. **Time is in HOURS everywhere in this app**: engine, ODE rates, grids, doses,
+   observations, charts, form fields, session JSON, report. Units follow the model: mg, mg/L and mg·h/L for MPA (the pediatric model takes mg of MMF and applies no
+   conversion), µg, µg/L and µg·h/L inside the tacrolimus and everolimus engines (doses are typed in mg and converted once, in `custom.doseToEngine`). **Do not port code from the complement-TDM app
    in the parent folder without converting units: that app uses DAYS in its engine.**
    The only acceptable day↔hour conversion is one commented block at model-file
    ingestion. There must be no `/ 24` or `* 24` anywhere else in `src/`.
@@ -119,8 +102,8 @@ node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, 
    `novalidate` and validate in JS.
 8. **Escape all user-entered text** before putting it into HTML (report, tables,
    tooltips). Never interpolate raw user input.
-9. **Keep the main screen light.** Long explanations belong in About, "MPA TDM
-   background", tooltips, or collapsed folds — not on the main cards.
+9. **Keep the main screen light.** Long explanations belong in About, the drug's
+   background dialog ("Mycophenolic acid background", "Tacrolimus background", ...), tooltips or collapsed folds, not on the main cards.
 10. **Research use only.** The disclaimer stays visible on screen and inside the
     printed report.
 
@@ -128,14 +111,14 @@ node tools/verify_model.mjs             # model-ingestion gate: must pass (MPA, 
 
 These are the behavioral rules for agents working here. They are adapted from
 [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) (MIT)
-and merged with this repo's conventions — `CLAUDE.md` in the repo root carries the
-same text for the whole repository. Where they overlap with the golden rules above
+and merged with this repo's conventions. `CLAUDE.md` in the parent repository carries the
+same text (it is not part of the published repository). Where they overlap with the golden rules above
 (e.g. §4.4 and rule 7b), the golden rules are the authoritative, more specific version.
 
 ### 4.1 Think before coding
 Don't assume. Don't hide confusion. Surface tradeoffs.
 - State assumptions explicitly before implementing. If uncertain, ask.
-- If multiple interpretations exist, present them — don't pick silently.
+- If multiple interpretations exist, present them. Don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop, name what's confusing, ask.
 
@@ -151,9 +134,9 @@ Minimum code that solves the problem. Nothing speculative.
 Touch only what you must. Clean up only your own mess.
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
-- Match existing style (here: ES5-ish `var`, IIFE modules, one `ECU` namespace —
+- Match existing style (here: ES5-ish `var`, IIFE modules, one `ECU` namespace,
   see §5), even where you'd do it differently.
-- If you notice unrelated dead code, mention it — don't delete it unless asked.
+- If you notice unrelated dead code, mention it, but don't delete it unless asked.
 - Remove imports/variables/functions that YOUR change made unused.
 
 The test: every changed line should trace directly to the request.
@@ -174,26 +157,26 @@ trivial change (a typo, a copy fix), use judgment.
 ## 5. Repository map
 
 ```
-nephrotdm.html            GENERATED single-file app — the deliverable. Never edit. (mpa-tdm.html = v1.1.1, superseded.)
+nephrotdm.html            GENERATED single-file app, the deliverable. Never edit. (mpa-tdm.html is v1.1.1, superseded.)
 index.html                Development entry page (loads src/app.css + src/*.js).
 build.mjs                 Inlines app.css + the src modules into nephrotdm.html;
                           warns if package.json and src/version.js drift.
 package.json              Two scripts only: test, build. No dependencies.
 
 src/
-  version.js              ECU.VERSION — single source of truth for the version.
-  tacrolimus.js           ECU.model.drugs.tac — the tacrolimus spec and ALL its model code (indivParams,
+  version.js              ECU.VERSION, the single source of truth for the version.
+  tacrolimus.js           ECU.model.drugs.tac: the tacrolimus spec and ALL its model code (indivParams,
                           closed-form simulate with per-dose F and ka, observation transform, assay
                           conversion, occasion bookkeeping, exposure). Reached from model.js/bayes.js
                           only through `spec.custom` hooks, so the MPA code path is untouched.
   texts_tac.js            Tacrolimus background / getting-started / About copy (no window numbers). Registers ECU.drugTexts.tac.
-  everolimus.js           ECU.model.drugs.evr — the everolimus spec and ALL its model code (closed-form Erlang-5 + 3-compartment solution,
+  everolimus.js           ECU.model.drugs.evr: the everolimus spec and ALL its model code (closed-form Erlang-5 + 3-compartment solution,
                           steady state, blood transform, exposure). Also reached only through `spec.custom` hooks. `spec.ui` carries its
                           presentation flags (and tacrolimus's): noun, weight, predDose, occasions, badge, chartTitle, shrinkEta, modelLine.
   texts_evr.js            Everolimus texts and result/report/explorer sentences; registers ECU.drugTexts.evr (ui.js reads the registry).
-  tacped.js               ECU.model.drugs.tacped — pediatric tacrolimus: the liver engine with Erlang-3 absorption, weight scaling, per-dose formulation (KA, F), exact steady-state sum
+  tacped.js               ECU.model.drugs.tacped: pediatric tacrolimus: the liver engine with Erlang-3 absorption, weight scaling, per-dose formulation (KA, F), exact steady-state sum
                           (ssh, with a fallback near a pole), Simpson exposure grid, scope warnings. Reached only through `spec.custom`.
-  mpaped.js               ECU.model.drugs.mpaped — pediatric MPA: two poles, Erlang-2 absorption, albumin and weight scaling, one occasion eta on F per sampled calendar day,
+  mpaped.js               ECU.model.drugs.mpaped: pediatric MPA: two poles, Erlang-2 absorption, albumin and weight scaling, one occasion eta on F per sampled calendar day,
                           AUC = dose/CL exactly. `spec.ui.bloodCorrection: false` makes ui.js and report.js drop the haematocrit, corrected rows and trough window.
   texts_tacped.js         Pediatric tacrolimus texts; registers ECU.drugTexts.tacped.
   texts_mpaped.js         Pediatric MPA texts; registers ECU.drugTexts.mpaped.
@@ -201,28 +184,30 @@ src/
   report.js               The one-page A4 report for every drug: ECU.report.build(ctx), pure (ui.js builds ctx from the run snapshot). Per-drug facts are in `spec.report` (lead tile, scope, window source, reading notes, short citation). Greyscale-safe, nothing under 12 px.
   author_photo.js         The author photo (inline WebP, ~39 KB base64) shown at the bottom of About; the same image as in complementtdm.
   parallel.js             Runs the independent MCMC chains of a fit on a pool of Web Workers built from the page's own inlined
-                          scripts; falls back, with identical draws, to the in-process run. Tacrolimus only (bayes.js `chainSeed`,
-                          `runChainTask`); MPA keeps its single-stream sampler. See docs/PERFORMANCE_AUDIT_V121.md.
-  model.js                ECU.model — drug registry, MPA spec (pending), ODE solver,
+                          scripts; falls back, with identical draws, to the in-process run. Used by every drug that declares `perChainSeeds`
+                          (all but adult MPA; bayes.js `chainSeed`, `runChainTask`); adult MPA keeps its single-stream sampler. The worker
+                          source list (`SOURCES`) must name every drug file. See docs/PERFORMANCE_AUDIT_V121.md.
+  model.js                ECU.model: drug registry and the picker order (`DRUG_ORDER`), the adult MPA spec, ODE solver,
                           event loop, simulate(), aucFromConc(), intervalGrid(),
                           covariateFields(), installStubSpec()/restorePendingSpec().
-  bayes.js                ECU.bayes — the engine: makeOfv() (prior + residual),
-                          mapEstimate() (multi-restart Nelder–Mead), laplaceCov(),
+  bayes.js                ECU.bayes: the engine: makeOfv() (prior + residual),
+                          mapEstimate() (multi-restart Nelder–Mead, adult MPA) and mapBFGS() (drugs with
+                          `spec.custom`), laplaceCov(),
                           runMCMC() (RW Metropolis, seeded RNG), runFit() (the main
                           entry: fit + AUC + trough + window probabilities + draws),
                           doseScan() (steady-state dose explorer), probAbove/Below/
                           Between().
-  chart.js                ECU.chart — dependency-free SVG concentration–time chart
+  chart.js                ECU.chart: a dependency-free SVG concentration–time chart
                           (linear/log-y, band, observed points, no libraries).
-  diagnostics.js          ECU.diagnostics — fit-diagnostics panel for the modal that
+  diagnostics.js          ECU.diagnostics: the fit-diagnostics panel for the modal that
                           opens via the “Fit diagnostics” button (enabled after a
                           forecast): observed-vs-predicted chart, sample-by-sample
                           residuals, posterior parameter ranges, shrinkage bars,
                           MCMC quality (residualRows/gofChart/summaryHint/panelHtml).
-  ui.js                   ECU.ui — app shell: pending gating, model-driven covariate
+  ui.js                   ECU.ui: the app shell: pending gating, model-driven covariate
                           rows, dosing/sampling entry, run flow, results grid, dose
                           explorer, report printing, session export/import, autosave,
-                          modals (About / Getting started / Mycophenolic acid background),
+                          modals (About / Getting started / the drug's background),
                           help popovers. Exposes state, buildRunInput(), validateRun(),
                           effectiveDoses(), windowBounds(), aboutHtml()… for tests.
   app.css                 All styles, including the print stylesheet (§7).
@@ -231,7 +216,7 @@ tests/
   harness.js              Minimal xUnit: t(), assert(), eq(), near(), throws(),
                           rejects(), truthy(), falsy(), runAll() (async). Exit code
                           is wired: a failing suite fails the process.
-  test_refresh.js         The visual refresh (13 tests): fonts, tap size, header and Session menu, one primary action, drug cards, result tiles, workspace, stepper, phone.
+  test_refresh.js         The visual refresh (17 tests): fonts, tap size, header and Session menu, one primary action, five drug cards, result tiles, workspace, stepper, phone, wiring of the pediatric files.
   test_report.js          The one-page report (9 tests): order, citations, per-drug tiles, escaping, safety notes, greyscale and type size, print setup.
   test_pediatric.js       The pediatric suite (64 tests): independent matrix-exponential oracle (`tools/nonmem_verify/ped/ped_oracle.mjs`), the section 4.4 reference numbers, NONMEM structure and
                           POSTHOC fixtures, KA near a pole, occasions, scope, texts, the screen and report behaviour, regression records.
@@ -242,7 +227,7 @@ tests/
   test_tacrolimus.js      The tacrolimus suite (60 tests, incl. an independent RK4 oracle, the Størset
                           anchors, the sabotage-verified invariants and V16, the MPA regression against
                           mpa_v111_regression.json).
-  run_all.js              The MPA/engine suite (111 tests) — pending gate, engine P0/P1
+  run_all.js              The MPA/engine suite (111 tests): pending gate, engine P0/P1
                           guards under the stub spec, clinical metadata, UI copy,
                           version sync. Edit here to add tests.
   golden.json             Golden reference values for the de Winter 2008 implementation
@@ -257,25 +242,31 @@ tools/
   calibrate_evr.mjs       Everolimus simulation–recovery study (12 cells; docs/CALIBRATION_RESULTS_EVR.md, tables by assemble_calibration_evr.mjs).
   audit_fields.js         Browser audit: does the text in every visible field fit its box? `window.auditFields()` after loading the built page; run it at 320 to 1920 px, for every drug and schedule mode (it found the clipped date and select fields of 4 Oct).
   record_evr_regression.mjs, record_ui_snapshot.mjs   Re-record tests/evr_regression.json; record the MPA/tacrolimus UI text (only BEFORE a deliberate change).
+  record_ped_regression.mjs, ped_regression_cases.mjs   Re-record tests/mpaped_regression.json and tests/tacped_regression.json (the cases live in one shared module).
+  nonmem_verify/ped/      Pediatric NONMEM check: `run_ped.sh` (structure; `POSTHOC=1` and `BAYES=1` for the later parts), the independent oracle, the authors' verbatim streams.
+  calibrate_ped*.mjs      The independent calibration and benchmark of the pediatric models (written by the statistician seat; results in docs/CALIBRATION_RESULTS_PEDIATRIC.md).
   evr_prototype/          Matrix-exponential and RK4 oracles and the prototype closed form for everolimus (used by the tests).
   nonmem_verify/evr/      Everolimus NONMEM check: `bash tools/nonmem_verify/evr/run_evr.sh` (structure + POSTHOC); export_golden_evr.mjs writes the test fixtures.
-  verify_model.mjs        Model-ingestion gate (MPA, tacrolimus and everolimus blocks). All must pass.
+  verify_model.mjs        Model-ingestion gate (MPA, tacrolimus, everolimus and the two pediatric blocks). All must pass.
 
 docs/
-  ADVERSARIAL_REVIEW.md   The v0.2 audit that drove the engine rewrite (all P0/P1
-                          items are fixed; P3-2 in-table dose editing is open).
-  SOURCE_ANALYSIS_IATDMCT_2021.md   What the consensus report contributes, with quotes.
+  RELEASE_NOTES_V110/V120/V140/V150.md   What each release changed, with its evidence and open items.
+  HANDOFF_EVEROLIMUS_M3.md, HANDOFF_PEDIATRIC.md   The plan, decisions and source readings of the two later model additions.
+  VERIFICATION_TEAM.md, VERIFICATION_PEDIATRIC.md  Review gates and verdicts; REVIEW_PEDIATRIC_*.md are the three independent reviews.
+  CALIBRATION_RESULTS*.md, NONMEM_CROSSCHECK*.md   Simulation-recovery studies and the NONMEM comparisons, per drug.
+  MODEL_ANALYSIS_*.md, IMPLEMENTATION_PLAN_*.md, SOURCE_ANALYSIS_*.md   Transcription records, plans and source readings.
+  METHODS_AUDIT_V101.md, ADVERSARIAL_*.md, PERFORMANCE_AUDIT_V121.md   The audits (all P0/P1 items fixed; P3-2 in-table dose editing is open).
 ```
 
 **Module pattern (match it):** every `src/*.js` is an IIFE that attaches to the single
 global namespace `root.ECU` and ends with
 `})(typeof window !== 'undefined' ? window : globalThis);` so the same files run in
-the browser *and* under Node for tests. ES5 style (`var`, function declarations) —
+the browser *and* under Node for tests. ES5 style (`var`, function declarations),
 no build transpilation, no modules, no bundler.
 
 ## 6. The engine in one page
 
-Units: **hours / mg / mg/L / mg·h/L** (rule 3).
+Units of the adult MPA engine: **hours, mg, mg/L, mg·h/L** (rule 3). The tacrolimus and everolimus engines work in µg and µg/L; §12 to §14 say so.
 
 - **OFV(η)** = `η' Ω⁻¹ η` (prior) + Gaussian residual likelihood with log-transformed
   variance. **Censored (`< LLOQ`) samples are not supported** (owner decision, v1.1): there
@@ -291,22 +282,22 @@ Units: **hours / mg / mg/L / mg·h/L** (rule 3).
   `[t_last dose, t_last dose + τ]` on an hour grid (24 intervals), then normalized
   per draw: **AUC₁₂ = (AUC₀₋ₓ/x)·12** (identity at x=12). Because the transform is
   positive-linear, quantiles map exactly and window probabilities computed on the
-  normalized chain equal the raw chain tested against bounds × 12/x — so the
+  normalized chain equal the raw chain tested against bounds × 12/x, so the
   forecast targets the AUC₀–12h window whatever interval the patient uses.
   `aucRaw`/`aucChain` keep the as-simulated AUC₀₋ₓ; the UI shows the provenance
   ("from AUC₀–24h … × 12/24"). Summary is the posterior median with a **5–95%
   interval**.
 - **Trough** = C(t_last + τ). Never `min(curve)`. No target, informational only.
-- **Window probabilities**: strict P(lo < AUC < hi) plus P(below lo) and P(above hi)
-  — both bounds are real. Defaults 30–60 mg·h/L (§7) and are editable clinical input.
+- **Window probabilities**: strict P(lo < AUC < hi) plus P(below lo) and P(above hi);
+  both bounds are real. Defaults 30–60 mg·h/L (§7) and are editable clinical input.
 - **Single-dose guard**: in full-schedule mode with only one dose, the app labels
-  the AUC as *single dose from zero — not steady state* (badge, warning, report note)
+  the AUC as *single dose from zero, not steady state* (badge, warning, report note)
   instead of presenting it as an SS value (audit defect S2/C2, fixed in v0.2.4).
 - **Dose explorer** (`doseScan`): replays a full maintenance regimen
   (`ssNDoses` doses, default 10) at the candidate amount **and the user-chosen interval
-  (12 or 24 h)** to true steady state, reusing this patient's posterior draws — it does
+  (12 or 24 h)** to true steady state, reusing this patient's posterior draws. It does
   **not** refit and does **not** pick doses. All AUCs are **normalized to a 12-hour
-  equivalent, AUC₁₂ = (AUC₀₋ₓ/x)·12, applied per posterior draw** — same contract as
+  equivalent, AUC₁₂ = (AUC₀₋ₓ/x)·12, applied per posterior draw**, the same contract as
   the main forecast (see the AUC bullet above). `aucRaw` carries the as-simulated
   AUC₀₋ₓ for display; the trough stays C(x), never normalized. Output contract:
   expected AUC₁₂ + 5–95% interval, the three window probabilities, predicted trough.
@@ -314,22 +305,26 @@ Units: **hours / mg / mg/L / mg·h/L** (rule 3).
   reconstructs the implied schedule (`effectiveDoses()`); full-schedule mode accepts
   actual dose events. Both feed the same `runFit`.
 
-The engine is currently exercised through `installStubSpec()` (a tiny 1-compartment
+The generic machinery is also tested through `installStubSpec()` (a tiny 1-compartment
 oral model inside model.js): tests unlock the stub, prove the machinery, then
-`restorePendingSpec()`. The stub never ships enabled.
+`restorePendingSpec()`. The stub never ships enabled; the real MPA spec is live.
+
+**Other drugs.** A drug with `spec.custom` supplies its own parameters, simulation, ingestion and exposure hooks. It takes the BFGS MAP (Nelder–Mead is unreliable beyond about
+8 dimensions) and reports the steady state of the last regimen on a typical day, not the history that was typed (§12 to §14). One thing is shared by every drug: `makeOfv` floors
+the residual variance at 1e-6. NONMEM's likelihood has no such floor; it matters only for predictions below about 2 mg/L (MPA) or 5 ng/L (tacrolimus). The owner decided to leave it.
 
 ## 7. Clinical metadata (already integrated, cited, and tested)
 
-- **Therapeutic window default 30–60 mg·h/L** — kidney transplant, MMF + CNI ± steroids,
+- **Therapeutic window default 30–60 mg·h/L** for kidney transplant, MMF + CNI ± steroids,
   adult & pediatric (Bergan et al., *Ther Drug Monit* 2021;43:150–197, grade B, II).
-- The on-screen window hint is deliberately a **short pointer** ("See 'MPA TDM
-  background' for reference values and best practices for TDM" — golden rule 9; the
+- The on-screen window hint is deliberately a **short pointer** ("See “Mycophenolic acid
+  background” for reference values and best practices for TDM", golden rule 9; the
   ≤120-char limit is test-enforced). The full per-indication table lives in the
   "Mycophenolic acid background" modal: liver 30–60; heart >36; lung none established; adult
   HSCT AUC₀–₂₄h >30 (different interval); proliferative **lupus nephritis ≈50**
   (prefer 45–60; Wuttiputhanun et al., *Lupus Sci Med* 2024;11:e001093);
   **childhood nephrotic syndrome >45–50** (Querfeld & Weber, *Pediatr Nephrol*
-  2018;33(12):2253–2265); other autoimmune use — no validated target, local practice.
+  2018;33(12):2253–2265); other autoimmune use has no validated target (local practice).
   The ⓘ help on the window fields carries the same list in short form. Transplant
   targets apply mainly to the first posttransplant year and are not validated for EC-MPS.
 - **Sampling guidance**: MMF ≥2 samples (typical LSS 20 min, 1 h, 3 h); EC-MPS 3–4
@@ -343,10 +338,10 @@ oral model inside model.js): tests unlock the stub, prove the machinery, then
 
 When a clinical number changes, update the spec in `src/model.js`, keep the citation
 with it, and keep the tests that lock it (`tests/run_all.js`, "Consensus clinical
-metadata" section) in step — they assert the hint cites Bergan and covers every
+metadata" section) in step. They assert the hint cites Bergan and covers every
 indication, so an accidental revert to kidney-only text fails the suite.
 
-## 8. Model ingestion — DONE for de Winter 2008; the procedure for the next model
+## 8. Model ingestion: done for de Winter 2008, and the procedure for the next model
 
 The MPA spec in `src/model.js` now carries the **de Winter 2008** model (final model 4):
 CL 16, Q 22, V1 40, V2 518 (L/h, L), ka 4.1 (MMF) / 3.0 (EC-MPS) per hour, tlag 0.30 h
@@ -360,12 +355,17 @@ The ingestion **procedure** (kept for the next model):
 1. Fill the spec fields in `src/model.js` (structure, THETA, ETA + iiv, SIGMA, FORMS,
    covariates). Convert any day-based parameters to hours at this boundary only (rule 3).
 2. Set `pending: false` and write `info`/`article`/`assumptions` (the model card reads them).
-3. Extend `covariateFields()` — the Patient card generates covariate inputs from it.
+3. Extend `covariateFields()`; the Patient card generates covariate inputs from it.
 4. `npm test` green; golden values into `tests/golden.json`.
 5. `node tools/verify_model.mjs` (strict) must pass.
 6. `npm run build`; bump the version.
 
-**Numerical validation of this model** (see the docs): mass-balance golden anchors
+**For a new drug, do not edit the engine.** Use the `spec.custom` route that everolimus and the pediatric drugs took: copy `src/everolimus.js` and `src/texts_evr.js`
+as the template, then register the new files in `build.mjs` (`FILES`), `index.html` (script tags and the hidden `#pt-drug` select), `src/parallel.js` (`SOURCES`),
+`tools/verify_model.mjs` and `DRUG_ORDER` in `src/model.js`. Add a card (`spec.card`), `spec.report` and the texts; the picker, the UI and the report read the spec.
+The handoffs of §13 and §14 list the decisions each addition needed.
+
+**Numerical validation of the adult MPA model** (see the docs): mass-balance golden anchors
 (MMF 1000 mg → AUC₁₂ = 739/16 ≈ 46.2), the analytic IV bi-exponential, the EC-MPS
 24h-periodicity invariant (morning + evening windows = 2 × dose/CL), SS depth 30
 doses (terminal t½ ≈ 40 h), and the V10 simulation–recovery calibration with the
@@ -373,8 +373,9 @@ S1/Ω-approximation robustness arms.
 
 ## 9. Testing discipline
 
-- The suite is `tests/run_all.js` on `tests/harness.js` (async `t()` cases;
-   `await runAll()` is already wired in the runner; process exit code reflects failures).
+- The suites are `tests/run_all.js` (adult MPA and the engine) and `test_tacrolimus.js`, `test_everolimus.js`, `test_pediatric.js`, `test_report.js` and
+   `test_refresh.js`, all on `tests/harness.js` (async `t()` cases; `await runAll()` is wired in each runner; the exit code reflects failures). Failures go to stderr, so read
+   both streams.
 - **Every assertion must be able to fail.** Before trusting a new test, break the
   thing it guards and watch it go red, then restore and watch it go green. Tests that
   cannot fail are deleted or fixed.
@@ -382,7 +383,7 @@ S1/Ω-approximation robustness arms.
   stub installed.
 - UI-copy tests load `src/ui.js` under Node (it no-ops DOM binding without a
   `document`) and assert on the exported `aboutHtml()` / `gettingStartedBodyHtml()` /
-  `backgroundHtml()` strings — copy changes must keep these in step.
+  `backgroundHtml()` strings; copy changes must keep these in step.
 - The version-sync test compares `src/version.js` with `package.json`; run
   `npm test` after any bump.
 
@@ -396,34 +397,35 @@ S1/Ω-approximation robustness arms.
 - **Session export/import** and **autosave** serialize `ECU.ui.state`; new fields
   must round-trip (add a test).
 - **Time inputs** are civil datetime-local strings converted with
-  `dtLocalToHours()` / `hoursToDtLocal()` — timezone-naive by design.
+  `dtLocalToHours()` / `hoursToDtLocal()`, timezone-naive by design.
 - The parent repo contains a sibling complement-TDM app (mAbs) with a similar shape
   but a **days-based engine** and a different CSS. Treat it as inspiration for
   patterns only, never as copy-paste source.
 
-## 11. Open items (updated for v1.5.0, 5 October 2026)
+## 11. Open items (v1.5.0, 5 October 2026)
 
-- **Pediatric drugs:** verdicts of the pharmacometrician, the UI designer and the clinical pharmacologist are pending (`docs/VERIFICATION_PEDIATRIC.md`); the texts are a first draft. The tacrolimus
-  3-point NRMSE (16.3 % simulated against 7.8 % published) is an open, documented point to put to the authors; the Brunet 2019 trough ranges and Schijvens 2020 are still to be checked against the
-  papers by the owner; a real print/PDF check of the A4 report is open; two-line MPA card names at 320 px, the fold position of the first input with five cards and the 601 KB page size are owner and
-  designer decisions (`docs/RELEASE_NOTES_V150.md`, "Open items").
-
-- **Everolimus:** the human review (`docs/VERIFICATION_TEAM.md`, addendum written) and publishing are open; the page is 518.8 KB (fonts 82 KB, author photo 39 KB), above the ~350 KB budget (owner accepted growth for the fonts); no interaction field, no transplant-date field and no AUC window by owner decision.
-- **Tacrolimus:** standard kidney window shipped (trough 4–12, AUC 150–210; AUC upper bound is the app's choice, `docs/SOURCE_ANALYSIS_BRUNET_2019.md`); no transplant-date field (first-weeks bias is stated in the text, not
-  detected), once-daily and other schedules are refused, not modelled. See `docs/ADVERSARIAL_AUDIT_V121.md` for the judgement items.
+- **Pediatric drugs.** Three independent seats reviewed them and each gave "pass with comments" (`docs/REVIEW_PEDIATRIC_*.md`, `docs/VERIFICATION_PEDIATRIC.md`). The wording they asked
+  for was applied afterwards and has not been re-reviewed. Still open: the tacrolimus 3-point NRMSE in the benchmark replication (16.3 % simulated against 7.8 % published; accepted
+  as a documented point, to be put to the authors); the owner's check of the Brunet 2019 trough ranges and of Schijvens 2020; a real print/PDF check of the A4 report (one report
+  configuration is 16 px over the 1103 px safety margin and inside the 1123 px page); a multi-start MAP (single-start can end in a worse mode; a 1.5.1 candidate); two-line MPA card
+  names at 320 px and the fold position of the first input with five cards (designer and owner decisions). See `docs/RELEASE_NOTES_V150.md`, "Open items".
+- **Everolimus.** No named human has reviewed it (`docs/VERIFICATION_TEAM.md`, addendum written). The page is far above the old ~350 KB budget (the owner accepted the growth for the fonts).
+  No interaction field, no transplant-date field and no AUC window, by owner decision.
+- **Tacrolimus (adult).** The standard kidney window is shipped (trough 4–12, AUC 150–210; the AUC upper bound is the app's choice, `docs/SOURCE_ANALYSIS_BRUNET_2019.md`). There is no
+  transplant-date field (the first-weeks bias is stated in the text, not detected); once-daily and other schedules are refused, not modelled. See `docs/ADVERSARIAL_AUDIT_V121.md`.
 
 ### Carried over from the MPA releases
 
 - **Author queries** (S1/diagonal-Ω): full Ω covariance and the ω² convention from the
-  de Winter authors — drafted (the drafts, `docs/AUTHOR_QUERY*.md`, are kept private and are not in this repository); the
+  de Winter authors: drafted (the drafts, `docs/AUTHOR_QUERY*.md`, are kept private and are not in this repository); the
   robustness arms measured the impact as AUC-benign for rich sampling; with sparse data
-  (trough only) the choice moves the interval width ≈10 % and P(window) a few pp — stated in
+  (trough only) the choice moves the interval width ≈10 % and P(window) a few pp; stated in
   the model card. The paper reports IIV as % only (Table III); the conversion is our reading.
-- ~~EC-MPS window anchoring (S12)~~ — **shipped in v1.0.1**: `M.aucAnchor` auto-anchors
+- ~~EC-MPS window anchoring (S12)~~: **shipped in v1.0.1**: `M.aucAnchor` auto-anchors
   the AUC window at the most recent morning dose for evening-ending EC-MPS schedules
-  (fit unchanged — only the derived window moves; UI/report/diagnostics carry the note).
+  (fit unchanged, only the derived window moves; UI/report/diagnostics carry the note).
 - P3-2: dose/observation tables are delete-only; in-place editing would help.
-- ~~Browser runtime ~30–60 s per fit~~ — **resolved in v1.1.0**: closed-form propagation and exact
+- ~~Browser runtime ~30–60 s per fit~~: **resolved in v1.1.0**: closed-form propagation and exact
   steady state, ≈0.5 s per fit; no worker thread needed.
 - **EC-MPS convergence:** 5–15 % of EC-MPS fits do not pass the R̂/ESS check (slow mixing of the
   discrete absorption subgroup; more iterations do not fix it). The app flags them. A sampler change
@@ -431,19 +433,19 @@ S1/Ω-approximation robustness arms.
 - **MAP in the diagnostics dialog** is a single-start optimum and can be a local minimum with sparse
   data (NONMEM's POSTHOC behaves the same; `docs/NONMEM_CROSSCHECK.md`). Reported AUC/trough/probabilities
   use the posterior and are unaffected. Multi-start MAP and a marginal EC-MPS subgroup choice would change
-  the displayed individual predictions — not done, owner's call.
-- **Verification gate** (`docs/VERIFICATION_TEAM.md`): verdicts are `pending` — no independent human
-  review has signed.
+  the displayed individual predictions. Not done, owner's call.
+- **Verification gate** (`docs/VERIFICATION_TEAM.md`): the verdicts for the adult drugs and everolimus are `pending`; no independent human
+  review has signed. The pediatric verdicts are from agent seats, not named people.
 - Step grids remain on `pt-wt`, `pt-age`, `ss-interval` (golden rule 7c; not on the audit's list).
 
-## 12. Tacrolimus (v1.2.0) — what is different
+## 12. Tacrolimus (v1.2.0): what is different
 
 - **Units:** engine in µg and µg/L (doses are entered in mg; the single mg→µg conversion is
   `custom.doseToEngine`; a test forbids `* 1000` and the immunoassay constants anywhere else). Time is
   still in hours (golden rule 3).
 - **Model:** plasma PK (2-compartment, ka, lag 0.41 h), scaled to fat-free mass; whole blood = Cp·(1+Hct·418/(Cp+3.8));
-  CYP3A5 and prednisolone act on CL and F; Ω is a correlated 3×3 block (CL, V1, Q) plus one κ on F — and,
-  only for days with a sample ≤ 4 h after a dose, one κ on ka — per sampled day (12 most recent).
+  CYP3A5 and prednisolone act on CL and F; Ω is a correlated 3×3 block (CL, V1, Q) plus one κ on F and,
+  only for days with a sample ≤ 4 h after a dose, one κ on ka, per sampled day (12 most recent).
   The first-day bioavailability effect and any genotype mixture are **not** modelled (owner decisions D2, D4).
 - **What is reported:** steady state of the *last regimen* on a typical day (κ = 0), also when a finite history
   was typed; AUC₀–₁₂ₕ and trough, actual (haematocrit of the latest sample) and corrected to 0.35.
@@ -451,12 +453,12 @@ S1/Ω-approximation robustness arms.
 - **Assay:** LC-MS/MS or Abbott CMIA (Størset 2014 Eq. 1). Results are shown on the chosen scale.
 - **MAP/sampler:** BFGS MAP (Nelder–Mead is unreliable beyond ~8 dimensions) and a dimension-scaled
   random-walk step; MPA keeps its validated settings.
-- **`fit.shrink` is shrinkage, Var(post)/ω²** (1 = the samples left the population variance in place; fixed in v1.2.1 —
+- **`fit.shrink` is shrinkage, Var(post)/ω²** (1 = the samples left the population variance in place; fixed in v1.2.1:
   until v1.2.0 it held *information gained*, 1 − Var/ω², and the MPA bars and sparse-data note read it backwards;
   `docs/METHODS_AUDIT_V101.md`, ST4 addendum). Tacrolimus still *shows and tests information gained*
   (`1 − fit.shrink`), deliberately: its bars are red when low and its note fires below 0.3.
 
-## 13. Everolimus (v1.4.0) — what is different
+## 13. Everolimus (v1.4.0): what is different
 
 - **Model:** Model 3 of Zwart 2021, used exactly as coded in the supplement (mg and mg/L there; µg and µg/L in the engine, binding constants ×1000). Five equal absorption stages,
   a liver compartment with flow-limited extraction (plasma flow QH·(1 − Ht), so haematocrit is a PK covariate), two-compartment plasma disposition, saturable red-cell binding.
@@ -473,7 +475,7 @@ S1/Ω-approximation robustness arms.
 - **Accuracy claims in About** come from Zwart 2021 Table 2 (Model 3), checked against the PDF; "about two thirds within ±30 %" is Table 2's 65–69 %.
 - **Verification record:** `docs/RELEASE_NOTES_V140.md` (checks, sabotage list) and `docs/CALIBRATION_RESULTS_EVR.md`.
 
-## 14. Pediatric MPA and pediatric tacrolimus (v1.5.0) — what is different
+## 14. Pediatric MPA and pediatric tacrolimus (v1.5.0): what is different
 
 - **Registration:** `src/mpaped.js` and `src/tacped.js` are `spec.custom` specs like everolimus; the card order is `DRUG_ORDER` in `model.js`; nothing else in `ui.js`, `report.js` or
   `diagnostics.js` names a drug (a test checks it). Flags on the spec: `ui.bloodCorrection` (false for MPA), `doseForms` (per-dose formulation), `ui.windowOn: 'corrected'` (tacrolimus pediatric),
@@ -486,4 +488,12 @@ S1/Ω-approximation robustness arms.
   (two in one directory overwrite each other's work files) and do not mark every parameter FIX in a BAYES stream (no estimation step).
 - **Verification tools:** `tools/nonmem_verify/ped/run_ped.sh` (structure; `POSTHOC=1`, `BAYES=1` for the later parts), `tools/calibrate_ped*.mjs` (the independent calibration and benchmark, written by
   the statistician seat), `tools/record_ped_regression.mjs`.
-- **Not in the app, by decision:** the starting-dose table of Heida 2024, mg/m2 guidance, an age field, a transplant-date field, a "sampled-day" line (D3).
+- **Which value the window is judged on.** The tacrolimus targets are whole-blood values that the sources take to refer to haematocrit 0.35, so pediatric tacrolimus judges the corrected
+  value (`ui.windowOn: 'corrected'`). The tile, the chips, the printout and the saved session say which value and which window set (`state.winSet`, `windowNoteOf`); typed bounds read
+  "your own bounds". Pediatric MPA has one set (30 to 60) and no corrected value.
+- **Conventions.** The reported AUC is the typical day (occasion effects zero), and unsampled dosing days carry an effect of zero. The true AUC of a single day scatters about it by
+  ×/÷ 1.2 to 1.3 (one SD). The one-haematocrit PK path costs a few per cent on average (up to about 20 % for some earlier samples) when the haematocrit differs by more than about 0.05
+  between samples. Warnings, never refusals: weight outside the data (MPA 12.9 to 79.9 kg, tacrolimus 9.1 to 78 kg), albumin outside 24 to 42 g/L, haematocrit outside 0.15 to 0.60.
+  Refusals: weight outside 3 to 200 kg, albumin outside 5 to 50 g/L, haematocrit outside 0.10 to 0.70.
+- **Not in the app, by decision:** the starting-dose table of Heida 2024, mg/m² guidance, an mg/kg dose check, an age field, a transplant-date field, a "sampled-day" line (D3), the
+  app's own simulation figures in its text, a rename of "Run forecast".
