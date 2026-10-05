@@ -31,7 +31,7 @@
     '})();'
   ].join('\n');
 
-  var SOURCES = ['src/version.js', 'src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/bayes.js'];
+  var SOURCES = ['src/version.js', 'src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/tacped.js', 'src/mpaped.js', 'src/bayes.js'];
 
   /* The built page carries each module as an inline <script> that starts with a marker comment (build.mjs). */
   function inlinedSources() {

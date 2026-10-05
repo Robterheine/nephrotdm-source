@@ -845,13 +845,13 @@
     // (UI "Steady state" mode). The exact periodic solution replaces the finite
     // history in every simulation; `doses` still drives the anchor and the report.
     var ssSpec = input.steadyState
-      ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: doses[doses.length - 1].route || 'oral', pred: doses[doses.length - 1].pred }
+      ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: doses[doses.length - 1].route || 'oral', pred: doses[doses.length - 1].pred, form: doses[doses.length - 1].form }
       : null;
     // Tacrolimus: the doses of sampled occasions stay explicit (their κ shifts the train); the rest is the exact train.
     var simDoses = ssSpec ? (custom ? doses.filter(function (d) { return d.delta; }) : []) : doses;
     // What the numbers refer to: for tacrolimus always the steady state of the LAST regimen on a typical day,
     // also when a finite history was entered (the history informs the fit, not the reported value).
-    var repSS = custom ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: 'oral', pred: doses[doses.length - 1].pred } : null;
+    var repSS = custom ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: 'oral', pred: doses[doses.length - 1].pred, form: doses[doses.length - 1].form } : null;
     // F3: an entered history shorter than 5 terminal half-lives (typical patient) is not steady state.
     var historySpanH = lastDoseT - doses[0].t;
     var historyNeedH = 5 * M.terminalHalfLife(M.indivParams(wt, age, renal, extra, zeros(dim), drug, form || null, 0));
@@ -1203,7 +1203,7 @@
       var assayS = opts.assay || exT.assay || 'lcms';
       var outT = [], amountsT = opts.amounts || [];
       for (var ia = 0; ia < amountsT.length; ia++) {
-        var exo = cu.exposure(sub0, { wt: opts.wt, extra: exT, ss: { amt: amountsT[ia], every: intervalHours, tEnd: tEnd, pred: opts.pred != null ? opts.pred : exT.pred },
+        var exo = cu.exposure(sub0, { wt: opts.wt, extra: exT, ss: { amt: amountsT[ia], every: intervalHours, tEnd: tEnd, pred: opts.pred != null ? opts.pred : exT.pred, form: form },
           grid: gridT, hctAct: hctS, hctRef: cu.constants.HCT_REF });
         var fa2 = function (a) { return isFinite(a) ? cu.fromModelAuc(a, intervalHours, assayS) : NaN; };
         var fc2 = function (v) { return isFinite(v) ? cu.fromModel(v, assayS) : NaN; };

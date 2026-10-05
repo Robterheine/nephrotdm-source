@@ -161,3 +161,25 @@ Questions specific to this model:
 2. (R2) Is one haematocrit for the pharmacokinetic path (the latest sample's), with each sample's own for the blood reading, an acceptable approximation to NONMEM's record-wise haematocrit (mean 1.0 %, max 6.2 % in earlier samples)?
 3. (R4) Is a run without a sample acceptable with the labelling and the a priori accuracy stated in About (AUC over-predicted by about 43 %)? Is showing the corrected value beside the actual one, with no AUC window and the two consensus trough sets, safe?
 4. (R5) Do the report, session and drug-switch paths of the third drug escape all user text and never carry one drug's window or covariate to another?
+
+
+---
+
+## Addendum — pediatric MPA and pediatric tacrolimus (NephroTDM 1.5.0), 5 October 2026
+
+The two pediatric models (`src/mpaped.js`, `src/tacped.js`) have **not been reviewed by any named person**; the verdicts of the pharmacometrician, the UI designer and the clinical
+pharmacologist are `pending` on the same terms (`docs/VERIFICATION_PEDIATRIC.md`). The first and last author of all four source papers is the owner of this app; independence rests on the separate seats
+(`docs/HANDOFF_PEDIATRIC.md` section 3), and the statistician seat was run as a separate agent that was given the plan and the code but not the builder's conclusions
+(`docs/CALIBRATION_RESULTS_PEDIATRIC.md`, with its own section in `VERIFICATION_PEDIATRIC.md`). What exists for a reviewer to start from: the hand-off with every decision, `docs/NONMEM_CROSSCHECK_PEDIATRIC.md`,
+`tools/nonmem_verify/ped/` (independent oracle and NONMEM 7.6 streams; the authors' own streams are verbatim there), `tests/test_pediatric.js`, `docs/RELEASE_NOTES_V150.md` and the source papers.
+Questions specific to these models:
+1. (R1) MPA: is the structure of the authors' run 57 with the article's values (not the listing's more precise estimates) the right reading, albumin normalised by 34 and the exponent -2.49, no MMF-to-MPA
+   factor? Tacrolimus: is the refit without height (Heida 2026 ESM S1) the right model to ship, with Schijvens 2020 cited as its origin?
+2. (R2) Is one occasion effect per sampled calendar day, with unsampled days at zero, an acceptable approximation for MPA, given the calibration finding that the AUC reads 4-5 % high when the simulated
+   children vary on every day, and given the stated 1.2-1.3 scatter of a single day around the typical-day value?
+3. (R3) The tacrolimus 3-point NRMSE in the benchmark replication is 16.3 % against 7.8 % published and is not attributed to a defect: is "open, documented, to be put to the authors" acceptable for release?
+4. (R4) Is judging the pediatric tacrolimus window on the corrected value, and showing the measured value beside it, the right reading of the targets (defined at haematocrit 0.35), and are the six window sets and
+   their sources ("as cited in Heida 2026"; Brunet 2019 not yet checked against the paper) worded honestly?
+5. (R5) Do the report, session and drug-switch paths escape all user text, and does a per-dose formulation column or an albumin value ever carry from one drug to another? Is a warning (not a refusal) outside the
+   range the model was built on the right level of protection?
+6. (R6) Does anything on screen, in the report or in the texts read as a dose or interval recommendation (the Heida 2024 starting-dose table and mg/m2 guidance are deliberately absent)?

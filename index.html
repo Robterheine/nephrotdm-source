@@ -65,7 +65,9 @@
         <div class="drug-cards" id="drugCards" role="group" aria-labelledby="drugLbl"></div>
         <select id="pt-drug" class="sr-only" aria-hidden="true" tabindex="-1" title="Which drug's population PK model to use for this patient">
           <option value="mpa">Mycophenolic acid</option>
+          <option value="mpaped">MPA (pediatric kidney)</option>
           <option value="tac">Tacrolimus (adult kidney)</option>
+          <option value="tacped">Tacrolimus (pediatric)</option>
           <option value="evr">Everolimus (adult kidney)</option>
         </select>
       </div>
@@ -99,6 +101,7 @@
       </div>
       <!-- Host for covariate rows generated from the model spec (model-driven UI) -->
       <div id="generatedCovariates" style="display:contents"></div>
+      <div class="note warn no-print" id="scopeWarn" role="status" hidden style="flex:1 1 100%"></div>
       <div class="sess-field sess-target">
         <details class="sess-fold" id="windowFold">
           <summary title="Therapeutic window used for probability-in-window. Fold open to change it.">
@@ -172,6 +175,7 @@
           <div class="f-dt"><label class="f" for="dose-dt">Date &amp; time</label><input type="datetime-local" id="dose-dt" title="Scheduled date and time of the administration"></div>
           <div><label class="f" for="dose-amt" id="doseAmtLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="dose-amt" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Dose in mg as prescribed"></div>
           <div id="dosePredWrap" style="display:none"><label class="f" for="dose-pred">Prednisolone (mg/day), if changed</label><input type="number" inputmode="decimal" id="dose-pred" min="0" step="any" placeholder="patient value" title="Leave empty to use the prednisolone dose of the patient card. Enter a value only if the steroid dose was different on the day of this administration."></div>
+          <div id="doseFormWrap" style="display:none"><label class="f" for="dose-form">Formulation</label><select id="dose-form" title="The formulation of this administration. The suspension is absorbed faster and has lower bioavailability than the capsule; a switch is entered on the dose where it happened."></select></div>
           <div style="align-self:end"><button class="secondary" type="submit" id="doseAdd" style="width:100%" title="Add this dose to the schedule">Add dose</button></div>
         </div>
       </form>
@@ -181,12 +185,13 @@
       <div class="row3" style="margin-top:8px">
         <div><label class="f" for="ss-dose" id="ssDoseLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="ss-dose" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Maintenance dose per administration, as prescribed"></div>
         <div><label class="f" for="ss-interval">Interval (hours)</label><input type="number" inputmode="decimal" id="ss-interval" min="1" max="48" step="1" placeholder="e.g. 12" title="Dosing interval in hours"></div>
+        <div id="ssFormWrap" style="display:none"><label class="f" for="ss-form">Formulation</label><select id="ss-form" title="The formulation of the regimen (every dose of the stable regimen is given in this form)."></select></div>
         <div class="f-dt"><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
       </div>
       <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”.</div>
     </div>
 
-    <h2 class="sub-h">Measured concentrations <span class="hint" id="sampleHint"></span> <span style="float:right"><button class="linklike" id="tplClear" title="Remove all doses and measurements">clear all</button></span></h2>
+    <h2 class="sub-h" style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px"><span>Measured concentrations <span class="hint" id="sampleHint"></span></span><button class="linklike" id="tplClear" style="margin-left:auto" title="Remove all doses and measurements">clear all</button></h2>
     <div class="note no-print" id="tacDoseNote" hidden>Immediate-release tacrolimus, twice daily (Prograf-type capsules). Prolonged-release products (once daily) are not covered by this model.</div>
     <div class="note warn no-print" id="ecmpsSampleNote" hidden>EC-MPS: absorption is delayed and highly variable, the source model’s own conclusion is that sparse limited sampling is expected to be unreliable for EC-MPS. Prefer more samples spread across the dosing interval (e.g. 1.5, 2, 4, 6, 8 h), and treat trough-only results with particular caution.</div>
     <div class="tbl-wrap"><table class="data" id="obsTable"></table></div>
@@ -334,10 +339,10 @@
     <h2 id="reportTitle">Generate report</h2>
     <p class="src">The report prints the current patient data, the last <b>run</b> forecast, model findings and the fields below. Both fields are optional and are kept in the session (and in exported session files) until you change them.</p>
     <label class="f" for="rp-prepared">Prepared by (name, role)</label>
-    <input type="text" id="rp-prepared" placeholder="e.g. J. Researcher, clinical pharmacologist" autocomplete="off"
+    <input type="text" id="rp-prepared" placeholder="e.g. J. Researcher, pharmacologist" autocomplete="off"
       title="Who performed the calculations, printed in the report header and on the signature line">
     <label class="f" for="rp-advice" style="margin-top:10px">Advice (free text, printed verbatim in the Advice section)</label>
-    <textarea id="rp-advice" rows="5" placeholder="e.g. Continue current regimen; repeat AUC after any dose change."
+    <textarea id="rp-advice" rows="5" placeholder="e.g. Repeat the AUC after a change."
       title="Your advice for the treating clinician. The model findings are printed separately above it. The advice itself is yours."></textarea>
     <div class="actions-inline" style="margin-top:14px;display:flex;gap:8px">
       <button class="primary" id="rp-generate" style="flex:1" title="Build the report sheet and open the print dialog">Generate report</button>
@@ -354,12 +359,16 @@
 <script src="src/model.js"></script>
 <script src="src/tacrolimus.js"></script>
 <script src="src/everolimus.js"></script>
+<script src="src/tacped.js"></script>
+<script src="src/mpaped.js"></script>
 <script src="src/bayes.js"></script>
 <script src="src/parallel.js"></script>
 <script src="src/chart.js"></script>
 <script src="src/diagnostics.js"></script>
 <script src="src/texts_tac.js"></script>
 <script src="src/texts_evr.js"></script>
+<script src="src/texts_tacped.js"></script>
+<script src="src/texts_mpaped.js"></script>
 <script src="src/author_photo.js"></script>
 <script src="src/report.js"></script>
 <script src="src/ui.js"></script>

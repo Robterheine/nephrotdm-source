@@ -18,6 +18,13 @@
    * model (haematocrit, assay, two windows, steady-state AUC and trough as the reported pair). */
   var MPA_UNITS = { conc: 'mg/L', auc: 'mg·h/L', dose: 'mg' };
   function isCustom() { var s = M.drug(); return !!(s && s.custom); }
+  /* Read through whole blood (haematocrit per sample, corrected rows, a trough window): the tacrolimus-type specs. A custom spec with ui.bloodCorrection
+   * false (pediatric MPA, a plasma assay) takes the same engine path without any of that. */
+  function hasBlood(sp) { sp = sp || M.drug(); return !!(sp && sp.custom && !(sp.ui && sp.ui.bloodCorrection === false)); }
+  /* A spec with doseForms (pediatric tacrolimus) asks for the formulation on every dose and on the steady-state regimen. */
+  function hasDoseForm(sp) { sp = sp || M.drug(); return !!(sp && sp.doseForms && sp.doseForms.length); }
+  function doseFormLabel(v, sp) { sp = sp || M.drug(); var f = (sp.doseForms || []).filter(function (x) { return x.value === v; })[0]; return f ? f.label : ''; }
+  function hctLimits(sp) { sp = sp || M.drug(); var c = M.covariateFields(sp.id).filter(function (x) { return x.id === 'hct'; })[0]; return { lo: c && c.min != null ? c.min : 0.10, hi: c && c.max != null ? c.max : 0.65 }; }
   /* Per-drug presentation flags live on the spec (spec.ui: noun, weight, predDose, badge, chartTitle, shrinkEta, modelLine) and the drug's
    * texts in the registry ECU.drugTexts[id] (texts_tac.js, texts_evr.js). MPA has neither. */
   /* Does this drug's model take body weight? The weight field is hidden for drugs that do not, but keeps whatever was typed for another drug, so nothing may read it blindly. */
@@ -31,6 +38,7 @@
   function aucUnit(fit) { var u = unitsOf(fit).auc; return (fit && fit.assay === 'cmia') ? u + ', CMIA scale' : u; }
   function resetWindows() {
     ['pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi'].forEach(function (id) { if ($(id)) $(id).value = ''; });
+    state.winSet = null;
   }
   /* Fill the four window fields from one of the drug's window sets (null bound = empty field). Used when the drug is chosen and by the Use buttons. */
   function applyWindowSet(id) {
@@ -42,8 +50,18 @@
       el.value = f[1] == null ? '' : f[1];
       el.dispatchEvent(new Event('input', { bubbles: true }));   // fold labels, stale mark and autosave follow
     });
+    state.winSet = w.id;
     return true;
   }
+  /* The window a result was judged against, in words (drugs that judge on the corrected value, where the set depends on the time since transplantation:
+   * the printout must show which set was used). kind: 'auc' or 'trough'; winSetId: the set the run was made with, or null for typed bounds. */
+  function windowNoteOf(kind, spec, winSetId, short) {
+    if (!uiVal('windowOn', spec)) return '';
+    var w = (spec.windowSets || []).filter(function (x) { return x.id === winSetId; })[0];
+    var own = !w || (kind === 'auc' ? !w.auc : !w.trough);
+    return esc('Window: ' + (own ? 'your own bounds' : w.label) + (short ? '.' : ', judged on the corrected value.'));   // short: the printout, where the probability sentence already says which value is compared
+  }
+  function joinNotes(parts) { var p = parts.filter(Boolean); return p.length ? ' · ' + p.join(' · ') : ''; }
   function troughBounds() {
     var lo = parseFloat($('pt-tlo').value), hi = parseFloat($('pt-thi').value);
     return { lo: lo >= 0 ? lo : null, hi: hi > 0 ? hi : null };
@@ -97,6 +115,7 @@
     lastRun: null,
     lastRunInputs: null,
     lastRunView: null,   // what the report shows about the run: taken at the same moment as lastRun (F4)
+    winSet: null,        // the id of the window set the bounds came from (a "Use this window" press); cleared by typing a bound
     running: false
   };
 
@@ -129,6 +148,15 @@
     }
     var miss = missingCovariates();
     if (miss) return miss;
+    var fm = missingFormulation();
+    if (fm) return fm;
+    return '';
+  }
+  function missingFormulation() {
+    if (!hasDoseForm()) return '';
+    if (currentMode() === 'ss') return $('ss-form').value === '' ? 'Choose the formulation of the regimen (capsule or suspension).' : '';
+    var ds = effectiveDoses();
+    for (var i = 0; i < ds.length; i++) if (!ds[i].form) return 'Choose the formulation (capsule or suspension) for dose ' + (i + 1) + '.';
     return '';
   }
   function missingCovariates() {
@@ -155,6 +183,7 @@
       hint.className = 'run-hint ready';
       hint.textContent = modelPending() ? '' : 'Ready to run.';
     }
+    updateScopeWarn();
     $('iv-status').textContent = modelPending()
       ? 'Waiting for the model file.'
       : (state.lastRun ? '' : 'Run a forecast first.');
@@ -164,7 +193,7 @@
     var s = M.drug();
     var lo = s.wtMin != null ? s.wtMin : 3, hi = s.wtMax != null ? s.wtMax : 300;
     var el = $('pt-wt');
-    el.min = lo; el.max = hi;
+    el.min = lo; el.max = hi; el.step = s.wtStep != null ? s.wtStep : '0.5';
     el.title = 'Body weight in kg (' + lo + '–' + hi + ')';
   }
 
@@ -193,7 +222,7 @@
   function updateFormLabels() {
     var s = M.drug();
     if (!s.FORMS) {
-      var lbl0 = 'Dose (' + UN().dose + (uiVal('noun') ? ' ' + uiVal('noun') : '') + ')';
+      var lbl0 = 'Dose (' + UN().dose + (uiVal('doseNoun') || uiVal('noun') ? ' ' + (uiVal('doseNoun') || uiVal('noun')) : '') + ')';
       ['doseAmtLbl', 'ssDoseLbl', 'ivAmtLbl'].forEach(function (id) { if ($(id)) $(id).textContent = lbl0; });
       if ($('ecmpsSampleNote')) $('ecmpsSampleNote').hidden = true;
       if ($('tacDoseNote')) {
@@ -303,7 +332,7 @@
           '<input type="' + (c.units && /text|as declared/i.test(c.units) ? 'text' : 'number') +
           '" inputmode="decimal" id="cov-' + esc(c.id) + '" title="' + esc(c.help || '') + '"' +
           (c.min != null ? ' min="' + c.min + '"' : '') + (c.max != null ? ' max="' + c.max + '"' : '') +
-          (c.step != null ? ' step="' + c.step + '"' : '') + '>';
+          (c.step != null ? ' step="' + c.step + '"' : '') + (c.placeholder ? ' placeholder="' + esc(c.placeholder) + '"' : '') + '>';
       }
       host.appendChild(wrap);
     });
@@ -354,7 +383,10 @@
     if ($('chartNote')) $('chartNote').innerHTML = drugText('chartNote');
     if ($('howtoList')) $('howtoList').innerHTML = drugText('howto');
     var show = function (id, on) { if ($(id)) $(id).style.display = on ? '' : 'none'; };
-    show('troughTargetRow', tac); show('dosePredWrap', uiFlag('predDose')); show('obsHctWrap', tac);
+    show('troughTargetRow', hasBlood()); show('dosePredWrap', uiFlag('predDose')); show('obsHctWrap', hasBlood());
+    show('doseFormWrap', hasDoseForm()); show('ssFormWrap', hasDoseForm()); fillFormSelects();
+    var wtIn = $('pt-wt'); if (wtIn) wtIn.placeholder = uiVal('wtPlaceholder') || 'e.g. 70';
+    var oh = $('obs-hct'); if (oh && s.custom) { var hl = hctLimits(s); oh.min = hl.lo; oh.max = hl.hi; }
     var lbl = $('obsValLbl'); if (lbl) lbl.textContent = 'Concentration (' + u.conc + (u.concAlt ? ', = ' + u.concAlt : '') + ')';
     var fl = document.querySelector('#windowFold .fold-lbl'); if (fl) fl.textContent = 'Therapeutic window: AUC₀–12h';
     var lo = document.querySelector('label[for="pt-winlo"]'); if (lo) lo.textContent = 'Lower bound AUC₀–12h (' + u.auc + ')';
@@ -379,6 +411,29 @@
     });
     var ssi = $('ss-interval'); if (ssi) { ssi.min = s.intervalRange ? s.intervalRange.min : 1; ssi.max = s.intervalRange ? s.intervalRange.max : 48; }
     updateWindowFoldVal();
+  }
+  /* The formulation selects (one per dose row, one for the steady-state regimen): options from the spec, a leading "choose…" so nothing is assumed. */
+  function fillFormSelects() {
+    var s = M.drug(), opts = hasDoseForm(s) ? '<option value="">choose…</option>' + s.doseForms.map(function (f) { return '<option value="' + esc(f.value) + '">' + esc(f.label) + '</option>'; }).join('') : '';
+    ['dose-form', 'ss-form'].forEach(function (id) {
+      var el = $(id); if (!el) return;
+      var keep = el.value;
+      if (el._for !== s.id) { el.innerHTML = opts; el._for = s.id; if (Array.prototype.some.call(el.options, function (o) { return o.value === keep; })) el.value = keep; }
+    });
+  }
+  /* A value outside the range the model was built on is shown, not refused (the refusal limits are the spec's own). */
+  function scopeWarningsLive() {
+    var s = M.drug();
+    if (!s || !s.custom || !s.custom.scopeWarnings) return [];
+    var wt = parseFloat($('pt-wt').value);
+    return s.custom.scopeWarnings(isFinite(wt) ? wt : NaN, extraCovariates());
+  }
+  function updateScopeWarn() {
+    var el = $('scopeWarn');
+    if (!el) return;
+    var w = scopeWarningsLive();
+    el.hidden = !w.length;
+    el.textContent = w.join(' ');
   }
   function extraCovariates() {
     var extra = {};
@@ -405,13 +460,14 @@
     var tbl = $('doseTable');
     if (!tbl) return;
     var tac = uiFlag('predDose');   // the prednisolone column belongs to drugs that take a per-dose prednisolone value
-    var rows = ['<tr><th>#</th><th>Date &amp; time</th><th class="num">Dose (' + esc(UN().dose) + ')</th>' + (tac ? '<th class="num">Prednisolone (mg/day)</th>' : '') + '<th>Route</th><th></th></tr>'];
+    var fm = hasDoseForm();         // the formulation column belongs to drugs that take a per-dose formulation
+    var rows = ['<tr><th>#</th><th>Date &amp; time</th><th class="num">Dose (' + esc(UN().dose) + ')</th>' + (tac ? '<th class="num">Prednisolone (mg/day)</th>' : '') + (fm ? '<th>Formulation</th>' : '') + '<th>Route</th><th></th></tr>'];
     if (!state.doses.length) {
-      rows.push('<tr><td colspan="' + (tac ? 6 : 5) + '" class="note" style="border:none">No doses entered yet.</td></tr>');
+      rows.push('<tr><td colspan="' + (5 + (tac ? 1 : 0) + (fm ? 1 : 0)) + '" class="note" style="border:none">No doses entered yet.</td></tr>');
     } else {
       state.doses.forEach(function (d, i) {
         rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(d.t)) +
-          '</td><td class="num">' + esc(d.amt) + '</td>' + (tac ? '<td class="num">' + (d.pred != null ? esc(d.pred) : '<span class="hint">patient</span>') + '</td>' : '') + '<td>' + esc(d.route) +
+          '</td><td class="num">' + esc(d.amt) + '</td>' + (tac ? '<td class="num">' + (d.pred != null ? esc(d.pred) : '<span class="hint">patient</span>') + '</td>' : '') + (fm ? '<td>' + (d.form ? esc(doseFormLabel(d.form)) : '<span class="hint">choose</span>') + '</td>' : '') + '<td>' + esc(d.route) +
           '</td><td><button class="linklike no-print" data-del-dose="' + i + '" title="Remove this dose">remove</button></td></tr>');
       });
     }
@@ -420,7 +476,7 @@
   function renderObsTable() {
     var tbl = $('obsTable');
     if (!tbl) return;
-    var tac = isCustom();
+    var tac = hasBlood();
     var rows = ['<tr><th>#</th><th>Date &amp; time</th><th class="num">Concentration (' + esc(UN().conc) + ')</th>' + (tac ? '<th class="num">Haematocrit (L/L)</th>' : '') + '<th></th></tr>'];
     if (!state.obs.length) {
       rows.push('<tr><td colspan="' + (tac ? 5 : 4) + '" class="note" style="border:none">No measurements entered yet.</td></tr>');
@@ -455,7 +511,7 @@
     var iv = parseFloat($('ss-interval').value);
     var anchor = dtLocalToHours($('ss-anchor').value);
     var n = M.drug().ssNDoses;   // every spec declares it; ssHistory defaults to 10 if one ever does not
-    return M.ssHistory({ amt: amt, intervalHours: iv, tEnd: anchor, n: n, route: 'oral' });
+    return M.ssHistory({ amt: amt, intervalHours: iv, tEnd: anchor, n: n, route: 'oral', form: hasDoseForm() ? $('ss-form').value : '' });
   }
   function effectiveDoses() {
     return currentMode() === 'ss' ? ssToDoses() : state.doses.slice().sort(function (a, b) { return a.t - b.t; });
@@ -497,6 +553,7 @@
       doses: doses.map(function (d) {
         var o = { t: d.t, amt: M.toEngineAmt($('pt-drug').value, d.amt, form), route: d.route || 'oral' };
         if (d.pred != null) o.pred = d.pred;
+        if (d.form) o.form = d.form;
         return o;
       }),
       steadyState: currentMode() === 'ss',   // the doses above are the expansion of an endless regimen
@@ -536,7 +593,7 @@
       if (c.type !== 'number' || c.id === 'wt' || c.min == null || c.max == null) return;
       var v = parseFloat(extra[c.id]);
       if (isFinite(v) && (v < c.min || v > c.max)) {
-        out.push(c.name + ' ' + v + ' ' + c.units + ' is outside ' + c.min + ' to ' + c.max + ' ' + c.units + '.' + (c.units === 'L/L' && v > 1 ? ' Enter it as a fraction (0.33), not a percentage.' : ''));
+        out.push(c.name + ' ' + v + ' ' + c.units + ' is outside ' + c.min + ' to ' + c.max + ' ' + c.units + '.' + (c.units === 'L/L' && v > 1 ? ' Enter it as a fraction (0.33), not a percentage.' : '') + (c.units === 'g/L' && v < 10 ? ' Enter it in g/L (34, not 3.4 g/dL).' : ''));
       }
     });
     var ds = (input.doses || []).map(function (d) { return d.t; }).filter(isFinite).sort(function (a, b) { return a - b; });
@@ -652,22 +709,22 @@
     var corrLine = '';
     if (c) {
       var same = Math.abs((fit.hctReport || 0) - H) < 0.005;
-      corrLine = '<div class="tile-c"><span class="tile-cmark" aria-hidden="true"></span>Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' : '<b>' + fmtC(c.median) + '</b> <span class="tile-cr">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + '</div>';
+      corrLine = '<div class="tile-c"><span class="tile-cmark" aria-hidden="true"></span>Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' : '<b>' + fmtC(c.median) + '</b> <span class="tile-cr">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + (m.judge === 'corrected' && m.win ? ' <span class="tile-sub">· compared with the window</span>' : '') + '</div>';
     }
-    var chips = '';
-    if (!m.informational && m.win && isFinite(s.pInWindow)) {
+    var chips = '', ps = (m.judge === 'corrected' && c) ? c : s;   // the window is defined for the corrected value (pediatric tacrolimus): the chips follow it
+    if (!m.informational && m.win && isFinite(ps.pInWindow)) {
       var chip = function (l, v, sub) { return '<div class="chip-p"><div class="chip-l">' + l + '</div><div class="chip-v">' + fmtP(v) + '</div><div class="chip-s">' + sub + '</div></div>'; };
-      chips = '<div class="chips">' + chip('In the window', s.pInWindow, fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit)) + chip('Above the lower bound', s.pAboveLower, 'above ' + fmtC(m.win.lo)) + chip('Below the upper bound', s.pBelowUpper, 'below ' + fmtC(m.win.hi)) + '</div>';
+      chips = '<div class="chips">' + chip('In the window', ps.pInWindow, fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit)) + chip('Above the lower bound', ps.pAboveLower, 'above ' + fmtC(m.win.lo)) + chip('Below the upper bound', ps.pBelowUpper, 'below ' + fmtC(m.win.hi)) + '</div>';
     }
     var scaleMax = Math.max(s.p95, c ? c.p95 : 0, m.win ? m.win.hi : 0, 1e-9);
-    return '<div class="tile"><div class="tile-h"><span class="tile-name">' + m.title + '</span><span class="tile-sub">median and 5 to 95% interval</span></div>' +
+    return '<div class="tile"><div class="tile-h"><span class="tile-name">' + m.title + '</span><span class="tile-sub">' + (m.judge === 'corrected' && c ? 'as measured (haematocrit ' + esc(fmtC(fit.hctReport)) + '), median and 5 to 95% interval' : 'median and 5 to 95% interval') + '</span></div>' +
       '<div class="tile-v"><span class="num">' + fmtC(s.median) + '</span><span class="unit">' + esc(m.unit) + '</span><span class="rng">' + fmtC(s.p5) + ' to ' + fmtC(s.p95) + '</span></div>' +
       corrLine + rangeBarHtml(s, c, m.win, scaleMax) + '<p class="tile-line">' + ECU.report.probLine(m, fit, m.spec) + '</p>' + chips + (m.note ? '<div class="tile-note">' + m.note + '</div>' : '') + '</div>';
   }
   /* kept as the entry point of the explorer and the screen results: label, stats, corrected stats, window, whether it is set, unit */
   function exposureRows(label, stats, corr, win, winSet, unit, fit, subExtra) {
     var isAuc = /AUC/.test(label);
-    return resultTileHtml({ key: isAuc ? 'auc' : 'trough', what: isAuc ? 'AUC' : 'trough', title: esc(label), unit: unit, stats: stats, corr: corr,
+    return resultTileHtml({ key: isAuc ? 'auc' : 'trough', what: isAuc ? 'AUC' : 'trough', title: esc(label), unit: unit, stats: stats, corr: corr, informational: !isAuc && !hasBlood(M.spec(fit.drug)), judge: uiVal('windowOn', M.spec(fit.drug)),
       win: (winSet && win && win.lo != null && win.hi != null) ? { lo: win.lo, hi: win.hi } : null, fit: fit, spec: M.spec(fit.drug), note: subExtra ? esc(subExtra.replace(/^ · /, '')) : '' });
   }
   /* the lead tile is the one the drug's consensus works from (spec.report.lead), shown first */
@@ -678,9 +735,11 @@
   }
   function renderResultsTac(fit) {
     var uA = aucUnit(fit), uC = concUnit(fit);
-    $('aucBlock').innerHTML = exposureRows('Steady-state AUC₀–12h', fit.auc, fit.aucCorr, { lo: fit.winLo, hi: fit.winHi }, fit.windowSet, uA, fit,
-      fit.intervalHours !== 12 && fit.aucRaw ? ' · from AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' × 12/' + esc(fit.intervalHours) : '');
-    $('troughBlock').innerHTML = exposureRows('Steady-state trough', fit.trough, fit.troughCorr, fit.troughWin, fit.troughWin && fit.troughWin.set, uC, fit, '');
+    var bl = hasBlood(M.spec(fit.drug));
+    var wsId = state.lastRunView ? state.lastRunView.winSet : null, spec1 = M.spec(fit.drug);
+    $('aucBlock').innerHTML = exposureRows('Steady-state AUC₀–12h', fit.auc, bl ? fit.aucCorr : null, { lo: fit.winLo, hi: fit.winHi }, fit.windowSet, uA, fit,
+      joinNotes([fit.intervalHours !== 12 && fit.aucRaw ? 'from AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' × 12/' + esc(fit.intervalHours) : '', fit.windowSet ? windowNoteOf('auc', spec1, wsId) : '']));
+    $('troughBlock').innerHTML = exposureRows(bl ? 'Steady-state trough' : 'Predicted trough, steady state', fit.trough, bl ? fit.troughCorr : null, fit.troughWin, bl && fit.troughWin && fit.troughWin.set, uC, fit, fit.troughWin && fit.troughWin.set ? joinNotes([windowNoteOf('trough', spec1, wsId)]) : '');
     orderTiles(M.spec(fit.drug));
     var badge = fit.hasObs
       ? '<span class="badge info" title="' + esc(fit.nDraws) + ' posterior draws, MCMC acceptance ' + (fit.acceptance * 100).toFixed(0) + '%">Fitted to this patient’s ' +
@@ -707,7 +766,12 @@
       : '<div class="legend-note">Steady-state values for the current regimen on a typical day, at the haematocrit of the latest sample (' +
         esc(fmtC(fit.hctReport)) + ' L/L); a single day varies around them by about 23%. The corrected lines refer to haematocrit ' + esc(fit.hctRef) +
         '.' + esc(cn) + '</div>';
-    $('advisoryBlock').innerHTML = capNote + resNote + shrinkNote +
+    var scopeNote = '';
+    if (spec.custom && spec.custom.scopeWarnings) {
+      var sw = spec.custom.scopeWarnings(fit.wt, fit.extra);
+      if (sw.length) scopeNote = '<div class="legend-note"><b>Outside the model’s range.</b> ' + esc(sw.join(' ')) + '</div>';
+    }
+    $('advisoryBlock').innerHTML = scopeNote + capNote + resNote + shrinkNote +
       '<div class="legend-note">' + esc(DG.summaryHint(fit)) + '</div>';
   }
 
@@ -796,8 +860,8 @@
       state.lastRunInputs = input;
       state.lastRunView = {
         patientId: $('pt-code').value, weight: usesWeight() ? $('pt-wt').value : '',
-        form: currentForm(), win: windowBounds(), troughWin: troughBounds(), drug: $('pt-drug').value, extra: extraCovariates(),
-        doses: effectiveDoses().map(function (d) { return d.pred != null ? { t: d.t, amt: d.amt, route: d.route, pred: d.pred } : { t: d.t, amt: d.amt, route: d.route }; }),
+        form: currentForm(), win: windowBounds(), troughWin: troughBounds(), winSet: state.winSet, drug: $('pt-drug').value, extra: extraCovariates(),
+        doses: effectiveDoses().map(function (d) { var o = d.pred != null ? { t: d.t, amt: d.amt, route: d.route, pred: d.pred } : { t: d.t, amt: d.amt, route: d.route }; if (d.form) o.form = d.form; return o; }),
         obs: state.obs.map(function (o) { return o.hct != null ? { t: o.t, c: o.c, hct: o.hct } : { t: o.t, c: o.c }; })
       };
       clearStale();
@@ -898,16 +962,16 @@
         draws: fit.draws || [], drug: fit.drug, wt: fit.wt, extra: fit.extra,
         tEnd: last.t, amounts: [cu.doseToEngine(amt)], intervalHours: 12,
         winLo: fit.winLo, winHi: fit.winHi, troughLo: fit.troughWin.lo, troughHi: fit.troughWin.hi,
-        pred: last.pred != null ? last.pred : fit.extra.pred, hct: fit.hctReport, assay: fit.assay
+        pred: last.pred != null ? last.pred : fit.extra.pred, hct: fit.hctReport, assay: fit.assay, form: last.form
       });
       var r = rows && rows[0];
       if (!r) { $('iv-status').textContent = 'Exploration failed.'; return; }
-      var uA = aucUnit(fit), uC = concUnit(fit), txe = TX(fit.drug);
+      var uA = aucUnit(fit), uC = concUnit(fit), txe = TX(fit.drug), bl = hasBlood(M.spec(fit.drug));
       $('iv-out').innerHTML =
-        '<div class="res-grid"><div class="res-cell"><div class="res-lbl">Candidate maintenance dose</div><div class="res-val">' + esc(amt) + ' mg ' + esc(uiVal('noun', M.spec(fit.drug)) || '') + '</div>' +
+        '<div class="res-grid"><div class="res-cell"><div class="res-lbl">Candidate maintenance dose</div><div class="res-val">' + esc(amt) + ' mg ' + esc(uiVal('doseNoun', M.spec(fit.drug)) || uiVal('noun', M.spec(fit.drug)) || '') + '</div>' +
         '<div class="res-sub">' + (txe && txe.explorerSub ? esc(txe.explorerSub(last, fit)) : 'every 12 h, at steady state, prednisolone ' + esc(last.pred != null ? last.pred : fit.extra.pred) + ' mg/day') + '</div></div></div>' +
-        '<div class="tiles">' + exposureRows('Steady-state AUC₀–12h', r.auc, r.aucCorr, { lo: fit.winLo, hi: fit.winHi }, r.windowSet, uA, fit, '') +
-        exposureRows('Steady-state trough', r.trough, r.troughCorr, fit.troughWin, r.troughWinSet, uC, fit, '') + '</div>' +
+        '<div class="tiles">' + exposureRows('Steady-state AUC₀–12h', r.auc, bl ? r.aucCorr : null, { lo: fit.winLo, hi: fit.winHi }, r.windowSet, uA, fit, r.windowSet ? joinNotes([windowNoteOf('auc', M.spec(fit.drug), state.lastRunView ? state.lastRunView.winSet : null)]) : '') +
+        exposureRows(bl ? 'Steady-state trough' : 'Predicted trough, steady state', r.trough, bl ? r.troughCorr : null, fit.troughWin, bl && r.troughWinSet, uC, fit, bl && r.troughWinSet ? joinNotes([windowNoteOf('trough', M.spec(fit.drug), state.lastRunView ? state.lastRunView.winSet : null)]) : '') + '</div>' +
         '<div class="legend-note">' + ((txe && txe.explorerNote) || 'The explorer reuses this patient’s fitted posterior and simulates the candidate dose to steady state on a typical day. Whole-blood concentrations rise a little less than in proportion to the dose because binding to red cells saturates, so doubling a dose gives somewhat less than double the exposure. It does not select or recommend a dose.') + '</div>';
       $('iv-status').textContent = '';
     } catch (e) {
@@ -1160,9 +1224,10 @@
       patient: { code: $('pt-code').value, wt: usesWeight() ? $('pt-wt').value : '', age: $('pt-age').value, renal: $('pt-renal').value, extra: $('pt-extracov').value },
       window: { lo: $('pt-winlo').value, hi: $('pt-winhi').value },
       troughWindow: { lo: $('pt-tlo').value, hi: $('pt-thi').value },
+      windowSet: state.winSet,
       formulation: $('pt-form').value, recency: $('pt-recency').value,
       mode: currentMode(),
-      ss: { dose: $('ss-dose').value, interval: $('ss-interval').value, anchor: $('ss-anchor').value },
+      ss: { dose: $('ss-dose').value, interval: $('ss-interval').value, anchor: $('ss-anchor').value, form: $('ss-form') ? $('ss-form').value : '' },
       doses: state.doses, obs: state.obs,
       extras: extraCovariates(),
       report: { prepared: $('rp-prepared').value, advice: $('rp-advice').value }
@@ -1186,6 +1251,7 @@
       var tw = o.troughWindow || {};
       $('pt-tlo').value = tw.lo != null ? tw.lo : '';
       $('pt-thi').value = tw.hi != null ? tw.hi : '';
+      state.winSet = typeof o.windowSet === 'string' ? o.windowSet : null;
       $('pt-form').value = o.formulation || 'mmf';
       $('pt-recency').value = o.recency || 'off';
       if (o.ss) {
@@ -1198,7 +1264,7 @@
       if (r) r.checked = true;
       // R2: older sessions may carry route 'iv'; the oral-only model must not fit those as IV.
       state.doses = Array.isArray(o.doses) ? o.doses.filter(function (d) { return isFinite(d.t) && d.amt > 0; })
-        .map(function (d) { return d.pred != null && isFinite(d.pred) ? { t: d.t, amt: d.amt, route: 'oral', pred: d.pred } : { t: d.t, amt: d.amt, route: 'oral' }; }) : [];
+        .map(function (d) { var o = d.pred != null && isFinite(d.pred) ? { t: d.t, amt: d.amt, route: 'oral', pred: d.pred } : { t: d.t, amt: d.amt, route: 'oral' }; if (typeof d.form === 'string' && d.form) o.form = d.form; return o; }) : [];
       // R4: censoring is no longer supported. An old file's “< LLOQ” samples cannot be fitted, and dropping them
       // silently would change the result, so they are left out AND the user is told how many.
       var allObs = Array.isArray(o.obs) ? o.obs : [];
@@ -1209,6 +1275,11 @@
       $('rp-prepared').value = rp.prepared || '';
       $('rp-advice').value = rp.advice || '';
       renderDoseTable(); renderObsTable(); renderDrugAndCovariates(); applyMode();
+      if (hasDoseForm()) {   // the selects were just rebuilt for this drug: the regimen's formulation, and the last dose's as the default of the next row
+        var sf = $('ss-form'), df = $('dose-form'), lastD = state.doses[state.doses.length - 1];
+        if (sf) sf.value = (o.ss && o.ss.form) || '';
+        if (df) df.value = lastD && lastD.form ? lastD.form : '';
+      }
       if (o.extras) {
         Object.keys(o.extras).forEach(function (k) {
           var el = $('cov-' + k);
@@ -1299,7 +1370,8 @@
       units: { auc: fit ? aucUnit(fit) : UN().auc, conc: fit ? concUnit(fit) : UN().conc },
       settings: fit ? fittingSettingsText(state.lastRunInputs) : '',
       advice: $('rp-advice').value, prepared: $('rp-prepared').value, fmtClock: fmtHoursClock,
-      notes: fit ? reportNotes(fit, spec) : {}
+      notes: fit ? reportNotes(fit, spec) : {},
+      winNotes: view ? { auc: windowNoteOf('auc', spec, view.winSet, true), trough: windowNoteOf('trough', spec, view.winSet, true) } : null
     };
     var sheet = $('reportSheet');
     sheet.innerHTML = fit ? ECU.report.build(ctx) : '<div class="rp-page"><h1 style="margin:0;font-size:20px">NephroTDM report</h1><p>No forecast has been run in this session. Run a forecast first, then print the report.</p></div>';
@@ -1314,6 +1386,7 @@
       convergence: DG.convergenceNote(fit),
       shortHistory: fit.warnSingleDose ? 'Only one dose was entered, so this AUC describes a single dose from zero, not steady state.' : DG.shortHistoryNote(fit),
       shrink: spec.custom ? '' : cap(DG.shrinkageNote(fit)),
+      scope: (spec.custom && spec.custom.scopeWarnings) ? spec.custom.scopeWarnings(fit.wt, fit.extra).join(' ') : '',
       anchor: fit.aucAnchorShifted ? 'The AUC window is anchored at the most recent morning dose (EC-MPS targets refer to morning-dose profiles); an evening-anchored window would read lower.' : ''
     };
   }
@@ -1337,7 +1410,9 @@
       var b = ev.target.closest ? ev.target.closest('button[data-winset]') : null;
       if (!b) return;
       var w = (M.drug().windowSets || []).filter(function (x) { return x.id === b.getAttribute('data-winset'); })[0];
-      if (w && applyWindowSet(w.id)) { closeModal('backgroundModal'); toast('Window set: ' + w.label + '.'); }
+      var sp9 = M.drug(), other = w && uiVal('windowOn', sp9) ? (w.auc ? [$('pt-tlo').value, $('pt-thi').value] : [$('pt-winlo').value, $('pt-winhi').value]) : null;
+      var clears = other && (other[0] !== '' || other[1] !== '') ? ' The ' + (w.auc ? 'trough' : 'AUC') + ' window was cleared.' : '';
+      if (w && applyWindowSet(w.id)) { closeModal('backgroundModal'); toast('Window set: ' + w.label + '.' + clears); }
     });
     $('btnBackground').addEventListener('click', function () {
       var bb = $('backgroundBody');
@@ -1435,10 +1510,11 @@
       updateRunButtons();
       markStale();
     });
-    ['pt-wt', 'pt-age', 'pt-renal', 'pt-extracov', 'pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi', 'pt-recency', 'pt-code', 'pt-form'].forEach(function (id) {
+    ['pt-wt', 'pt-age', 'pt-renal', 'pt-extracov', 'pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi', 'pt-recency', 'pt-code', 'pt-form', 'ss-form'].forEach(function (id) {
       var el = $(id);
       if (el) el.addEventListener('input', markStale);
     });
+    ['pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi'].forEach(function (id) { $(id).addEventListener('input', function () { state.winSet = null; }); });   // a typed bound is no longer the set's
     $('pt-winlo').addEventListener('input', updateWindowFoldVal);
     $('pt-winhi').addEventListener('input', updateWindowFoldVal);
     $('pt-tlo').addEventListener('input', updateWindowFoldVal);
@@ -1463,6 +1539,11 @@
       var dr = M.drug().dose;
       if (dr && !(amt >= dr.min && amt <= dr.max)) { toast('A dose of ' + amt + ' ' + UN().dose + ' is outside the range this model covers (' + dr.min + ' to ' + dr.max + ' ' + UN().dose + '). Check the unit.'); return; }
       var dose = { t: t, amt: amt, route: route };
+      if (hasDoseForm()) {
+        var fv = $('dose-form').value;
+        if (!fv) { toast('Choose the formulation of this dose (capsule or suspension).'); return; }
+        dose.form = fv;
+      }
       if (uiFlag('predDose') && $('dose-pred') && $('dose-pred').value !== '') {
         var pr = parseFloat($('dose-pred').value);
         if (!(pr >= 0)) { toast('Enter the prednisolone dose in mg/day (0 or more), or leave it empty.'); return; }
@@ -1485,10 +1566,10 @@
         return;
       }
       var ob = { t: t, c: c };
-      if (isCustom()) {
-        var hv = $('obs-hct').value !== '' ? parseFloat($('obs-hct').value) : covNum('hct');
+      if (hasBlood()) {
+        var hv = $('obs-hct').value !== '' ? parseFloat($('obs-hct').value) : covNum('hct'), hl = hctLimits();
         if (hv > 1 && hv <= 100) { toast('Haematocrit is entered in L/L (for example 0.33), not as a percentage.'); return; }
-        if (!(hv >= 0.10 && hv <= 0.65)) { toast('Enter the haematocrit of this sample in L/L (0.10–0.65), or fill in the patient card value.'); return; }
+        if (!(hv >= hl.lo && hv <= hl.hi)) { toast('Enter the haematocrit of this sample in L/L (' + hl.lo.toFixed(2) + '–' + hl.hi.toFixed(2) + '), or fill in the patient card value.'); return; }
         ob.hct = hv;
       }
       state.obs.push(ob);
@@ -1580,8 +1661,13 @@
     applySession: applySession,
     aboutHtml: aboutHtml,
     drugText: drugText,
+    scopeWarningsLive: scopeWarningsLive,
+    hasBlood: hasBlood,
+    hasDoseForm: hasDoseForm,
     drugCardsHtml: drugCardsHtml,
     resultTileHtml: resultTileHtml,
+    exposureRows: exposureRows,
+    windowNoteOf: windowNoteOf,
     backgroundHtml: backgroundHtml,
     gettingStartedBodyHtml: gettingStartedBodyHtml
   };

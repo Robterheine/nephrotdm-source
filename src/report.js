@@ -69,12 +69,13 @@
 
   /* the plain-language probability sentence, shared by the screen tiles and the printed report */
   function probLine(m, fit, spec) {
-    var s = m.stats, c = m.corr, H = fit.hctRef;
+    var s = m.stats, c = m.corr, H = fit.hctRef, onCorr = m.judge === 'corrected' && !!c;   // onCorr: the window is defined for the corrected value (pediatric tacrolimus)
     if (m.informational) return 'Predicted concentration just before the next dose. Informational: the app has no trough target.';
     if (m.win) {
-      var pin = pct(s.pInWindow), pab = pct(s.pAboveLower), pbe = pct(s.pBelowUpper), pc = c ? pct(c.pInWindow) : null;
-      return '<b>' + pin + '% chance</b> the ' + m.what + ' is within the window ' + fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit) +
-        (pc != null && c && !(Math.abs((fit.hctReport || 0) - H) < 0.005) ? ' (corrected: ' + pc + '%)' : '') + '. Chance above ' + fmtC(m.win.lo) + ': ' + pab + '%. Chance below ' + fmtC(m.win.hi) + ': ' + pbe + '%.';
+      var ps = onCorr ? c : s;
+      var pin = pct(ps.pInWindow), pab = pct(ps.pAboveLower), pbe = pct(ps.pBelowUpper), pc = c ? pct(c.pInWindow) : null;
+      return '<b>' + pin + '% chance</b> the ' + (onCorr ? 'corrected ' : '') + m.what + ' is within the window ' + fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit) +
+        (!onCorr && pc != null && c && !(Math.abs((fit.hctReport || 0) - H) < 0.005) ? ' (corrected: ' + pc + '%)' : '') + '. Chance above ' + fmtC(m.win.lo) + ': ' + pab + '%. Chance below ' + fmtC(m.win.hi) + ': ' + pbe + '%.';
     }
     return 'No ' + m.what + ' window is set, so no probabilities are shown.' + esc(((spec.report && spec.report.noWindow) || {})[m.key] || '');
   }
@@ -87,7 +88,7 @@
     if (c) {
       var same = Math.abs((ctx.fit.hctReport || 0) - H) < 0.005;
       corrLine = '<div style="font-size:13px;color:' + INK + '">Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' :
-        '<b style="font-family:' + MONO + '">' + fmtC(c.median) + '</b> <span style="font-family:' + MONO + ';color:' + MUT + '">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + '</div>';
+        '<b style="font-family:' + MONO + '">' + fmtC(c.median) + '</b> <span style="font-family:' + MONO + ';color:' + MUT + '">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + (m.judge === 'corrected' && m.win ? ' <span style="color:' + MUT + '">· vs window</span>' : '') + '</div>';
     }
     var line = probLine(m, ctx.fit, ctx.spec);
     var note = m.note ? '<div style="font-size:12px;color:' + MUT + '">' + m.note + '</div>' : '';
@@ -169,16 +170,16 @@
       }
       cells.push([c.name, txt]);
     });
-    var d = ctx.doses || [], last = d[d.length - 1], iv = ctx.fit.intervalHours, noun = (ctx.spec.ui && ctx.spec.ui.noun) || (ctx.formLabel ? ctx.formLabel.replace(/\s*\(.*$/, '') : '');
+    var d = ctx.doses || [], last = d[d.length - 1], iv = ctx.fit.intervalHours, noun = (ctx.spec.ui && (ctx.spec.ui.doseNoun || ctx.spec.ui.noun)) || (ctx.formLabel ? ctx.formLabel.replace(/\s*\(.*$/, '') : '');
     if (last) {
       var mpa = ECU.model && ctx.form && !ctx.spec.custom && ECU.model.toMpaMg ? ' (= ' + fmtC(ECU.model.toMpaMg(last.amt, ctx.form)) + ' mg MPA)' : '';
-      cells.push(['Regimen, latest dose', last.amt + ' mg ' + noun + mpa + (ctx.ssMode ? ' every ' + iv + ' h' : ' (latest of ' + d.length + ' doses)') + ', ' + ctx.fmtClock(last.t), 2]);
+      cells.push(['Regimen, latest dose', last.amt + ' mg ' + noun + (last.form ? ' ' + last.form : '') + mpa + (ctx.ssMode ? ' every ' + iv + ' h' : ' (latest of ' + d.length + ' doses)') + ', ' + ctx.fmtClock(last.t), 2]);
     } else cells.push(['Regimen', '–']);
     return cells.map(function (c) { return cell(c[0], c[1], c[2]); }).join('');
   }
 
   function samplesTable(ctx) {
-    var obs = ctx.obs || [], custom = !!ctx.spec.custom;
+    var obs = ctx.obs || [], custom = !!ctx.spec.custom && !(ctx.spec.ui && ctx.spec.ui.bloodCorrection === false);
     if (!obs.length) return '<div style="font-size:13px;color:' + MUT + '">None entered.</div>';
     var th = function (t, right) { return '<th style="padding:4px 6px;border-bottom:1.5px solid ' + INK + ';font-weight:600;text-align:' + (right ? 'right' : 'left') + '">' + t + '</th>'; };
     var td = function (t, right) { return '<td style="padding:3px 6px;border-bottom:1px solid #b5b5b5;font-family:' + MONO + ';text-align:' + (right ? 'right' : 'left') + '">' + esc(t) + '</td>'; };
@@ -192,13 +193,14 @@
     var aucWin = (fit.windowSet && fit.winLo != null && fit.winHi != null) ? { lo: fit.winLo, hi: fit.winHi } : null;
     var trWin = fit.troughWin && fit.troughWin.set ? { lo: fit.troughWin.lo, hi: fit.troughWin.hi } : null;
     var aucNote = (!custom && fit.intervalHours !== 12 && fit.aucRaw) ? 'As the 12-hour equivalent of the AUC over ' + esc(fit.intervalHours) + ' h (' + fmtC(fit.aucRaw.median) + ' ' + esc(ctx.units.auc) + ' as simulated).' : '';
-    var tAuc = { key: 'auc', what: 'AUC', title: 'AUC₀–₁₂ₕ', unit: ctx.units.auc, stats: fit.auc, corr: custom ? fit.aucCorr : null, win: aucWin, ctx: ctx, note: aucNote };
-    var tTr = { key: 'trough', what: 'trough', title: custom ? 'Trough' : 'Predicted trough', unit: ctx.units.conc, stats: fit.trough, corr: custom ? fit.troughCorr : null, win: custom ? trWin : null, informational: !custom, ctx: ctx };
+    var blood = custom && !(spec.ui && spec.ui.bloodCorrection === false);   // read through whole blood: corrected rows, haematocrit, a trough window
+    var tAuc = { key: 'auc', what: 'AUC', title: 'AUC₀–₁₂ₕ', unit: ctx.units.auc, stats: fit.auc, corr: blood ? fit.aucCorr : null, win: aucWin, judge: spec.ui && spec.ui.windowOn, ctx: ctx, note: [aucNote, aucWin && ctx.winNotes ? ctx.winNotes.auc : ''].filter(Boolean).join(' ') };
+    var tTr = { key: 'trough', what: 'trough', title: blood ? 'Trough' : 'Predicted trough', unit: ctx.units.conc, stats: fit.trough, corr: blood ? fit.troughCorr : null, win: blood ? trWin : null, informational: !blood, judge: spec.ui && spec.ui.windowOn, ctx: ctx, note: blood && trWin && ctx.winNotes ? ctx.winNotes.trough : '' };
     var tiles = (rp.lead === 'trough' ? [tTr, tAuc] : [tAuc, tTr]);
-    var anyCorr = custom, anyWin = !!(aucWin || (custom && trWin));
+    var anyCorr = blood, anyWin = !!(aucWin || (blood && trWin));
     var H = fit.hctRef;
     var reading = (rp.reading || []).map(function (s) { return '<li>' + esc(s.replace('@H', H != null ? H : '')) + '</li>'; }).join('');
-    var notes = [ctx.notes && ctx.notes.convergence, ctx.notes && ctx.notes.shortHistory, ctx.notes && ctx.notes.shrink, ctx.notes && ctx.notes.anchor].filter(Boolean);
+    var notes = [ctx.notes && ctx.notes.convergence, ctx.notes && ctx.notes.shortHistory, ctx.notes && ctx.notes.shrink, ctx.notes && ctx.notes.anchor, ctx.notes && ctx.notes.scope].filter(Boolean);
     var noteBox = notes.length ? '<div class="rp-notes" style="border:1.5px solid ' + INK + ';border-radius:6px;padding:8px 12px;font-size:13px;line-height:1.45"><b>Notes</b><ul style="margin:4px 0 0;padding-left:18px">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '';
     var stamp = ctx.inputsChanged ? '<div style="border:2px solid ' + INK + ';border-radius:6px;padding:8px 12px;font-size:13px;line-height:1.45"><b>Inputs changed on screen since this forecast.</b> This report shows the inputs the forecast was run with; re-run before signing if the changes matter.</div>' : '';
     var citeTxt = esc(rp.scope || '') + '. <b style="color:' + INK + ';font-weight:600">Model:</b> ' + cite(rp.modelCite || spec.article || '') + (rp.windowSource ? ' <b style="color:' + INK + ';font-weight:600">Windows:</b> ' + cite(rp.windowSource) : '');
@@ -208,7 +210,7 @@
     return '<div class="rp-page" style="font-size:13px;line-height:1.45;color:' + INK + '">' +
       stamp +
       '<div style="border-bottom:2px solid ' + INK + ';padding-bottom:6px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">' +
-      '<div style="display:flex;align-items:center;gap:12px">' + logo + '<div><h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.3px">NephroTDM report: ' + esc(noun) + '</h1></div></div>' +
+      '<div style="display:flex;align-items:center;gap:12px">' + logo + '<div><h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.3px">NephroTDM report: ' + esc((spec.ui && spec.ui.reportNoun) || noun) + '</h1></div></div>' +
       '<div style="text-align:right;font-size:12px;color:' + MUT + ';line-height:1.45">Generated ' + esc(ctx.now) + '<br>NephroTDM v' + esc(ctx.version) + '</div></div>' +
       '<p class="rp-cite" style="margin:0;font-size:12px;line-height:1.4;color:' + MUT + '">' + citeTxt + '</p></div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:5px 12px;border:1px solid ' + RULE + ';border-radius:6px;padding:8px 12px;background:#f7f7f7">' + patientCells(ctx) + '</div>' +

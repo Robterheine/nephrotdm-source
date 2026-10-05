@@ -12,7 +12,7 @@ var root = path.join(__dirname, '..');
 var read = function (p) { return fs.readFileSync(path.join(root, p), 'utf8'); };
 var html = read('index.html'), css = read('src/app.css'), fonts = read('src/fonts.css'), ui = read('src/ui.js'), build = read('build.mjs');
 
-['version', 'model', 'tacrolimus', 'everolimus', 'bayes', 'parallel', 'chart', 'diagnostics', 'texts_tac', 'texts_evr', 'author_photo', 'report', 'ui'].forEach(function (f) { require('../src/' + f + '.js'); });
+['version', 'model', 'tacrolimus', 'everolimus', 'tacped', 'mpaped', 'bayes', 'parallel', 'chart', 'diagnostics', 'texts_tac', 'texts_evr', 'texts_tacped', 'texts_mpaped', 'author_photo', 'report', 'ui'].forEach(function (f) { require('../src/' + f + '.js'); });
 var ECU = globalThis.ECU, M = ECU.model;
 
 t('fonts: IBM Plex is embedded (no network), Sans as one variable file and Mono in two weights, loaded before the app styles, and named in the font stacks', function () {
@@ -52,16 +52,19 @@ t('one primary action: in the workspace only Run forecast is filled (adding a do
   ['doseAdd', 'obsAdd', 'iv-run'].forEach(function (id) { truthy(new RegExp('<button[^>]*id="' + id + '"[^>]*class="secondary"|<button[^>]*class="secondary"[^>]*id="' + id + '"').test(main), id + ' is secondary'); });
 });
 
-t('drug cards: three cards from the specs (name, analyte and model), the select stays as the hidden source of truth, and the active card is pressed', function () {
-  ['mpa', 'tac', 'evr'].forEach(function (id) { var c = M.spec(id).card; truthy(c && c.name && c.sub, id + ' has card texts'); });
+t('drug cards: five cards from the specs in the owner’s order (name, analyte and model), the select stays as the hidden source of truth with the same five options, and the active card is pressed', function () {
+  var IDS = ['mpa', 'mpaped', 'tac', 'tacped', 'evr'];
+  IDS.forEach(function (id) { var c = M.spec(id).card; truthy(c && c.name && c.sub, id + ' has card texts'); });
+  eq((html.match(/<select id="pt-drug"[\s\S]*?<\/select>/)[0].match(/<option value="([a-z]+)"/g) || []).map(function (o) { return o.replace(/<option value="|"/g, ''); }).join(','), IDS.join(','), 'the hidden select has the five options in the cards’ order');
   var sel = html.match(/<select id="pt-drug"[^>]*>/)[0];
   truthy(/class="sr-only"/.test(sel) && /aria-hidden="true"/.test(sel) && /tabindex="-1"/.test(sel), 'the select is hidden from sight and from assistive technology');
   truthy(/id="drugCards"/.test(html) && /role="group"/.test(html.match(/<div[^>]*id="drugCards"[^>]*>/)[0]), 'the cards container is a labelled group');
   var U = ECU.ui;
   var out = U.drugCardsHtml('evr');
-  eq((out.match(/<button/g) || []).length, 3, 'three cards');
-  truthy(/data-drug="evr"[^>]*aria-pressed="true"/.test(out) && /data-drug="mpa"[^>]*aria-pressed="false"/.test(out) && /data-drug="tac"[^>]*aria-pressed="false"/.test(out), 'only the selected drug is pressed');
-  ['mpa', 'tac', 'evr'].forEach(function (id) { truthy(out.indexOf(M.spec(id).card.name) >= 0 && out.indexOf(M.spec(id).card.sub.replace(/&/g, '&amp;')) >= 0, id + ' text in the card'); });
+  eq((out.match(/<button/g) || []).length, 5, 'five cards');
+  eq((out.match(/data-drug="([a-z]+)"/g) || []).map(function (o) { return o.replace(/data-drug="|"/g, ''); }).join(','), IDS.join(','), 'the cards come in the owner’s order');
+  truthy(/data-drug="evr"[^>]*aria-pressed="true"/.test(out) && IDS.filter(function (i) { return i !== 'evr'; }).every(function (i) { return new RegExp('data-drug="' + i + '"[^>]*aria-pressed="false"').test(out); }), 'only the selected drug is pressed');
+  IDS.forEach(function (id) { truthy(out.indexOf(M.spec(id).card.name) >= 0 && out.indexOf(M.spec(id).card.sub.replace(/&/g, '&amp;')) >= 0, id + ' text in the card'); });
   truthy(/\.drug-card\[aria-pressed="true"\]/.test(css) && /\.sr-only \{/.test(css), 'styles for the pressed card and the hidden select');
   truthy(/drugCards[\s\S]{0,600}dispatchEvent\(new Event\('change'/.test(ui), 'a card press goes through the select’s own change handler (confirm, reset, switch)');
 });
@@ -168,12 +171,36 @@ t('select labels: a select cannot wrap, so every option label (in the page and i
   (html.match(/<select[\s\S]*?<\/select>/g) || []).forEach(function (sel) {
     (sel.match(/<option[^>]*>([^<]*)<\/option>/g) || []).forEach(function (o) { var t = o.replace(/<[^>]+>/g, ''); if (t.length > 28) long.push(t); });
   });
-  ['mpa', 'tac', 'evr'].forEach(function (id) {
+  ['mpa', 'mpaped', 'tac', 'tacped', 'evr'].forEach(function (id) {
     M.covariateFields(id).forEach(function (c) { (c.options || []).forEach(function (o) { if (o.label.length > 28) long.push(id + ':' + o.label); }); });
+    (M.spec(id).doseForms || []).forEach(function (o) { if (o.label.length > 28) long.push(id + ':' + o.label); });   // the per-dose formulation select
   });
   eq(long.join(' | '), '', 'option labels over 28 characters');
   truthy(/value="ecmps">EC-MPS \(enteric-coated\)</.test(html) && /value="off">Off \(all samples equal\)</.test(html), 'the shortened labels');
   truthy(/Off \\\(\[\^\)\]\*\\\)/.test(read('src/report.js')), 'the report still prints "Off" without the parenthesis, whatever it says');
+});
+
+t('pediatric drugs: scripts, texts and workers are wired, the formulation selects and the warning line exist, and nothing else in the page names a drug', function () {
+  ['src/tacped.js', 'src/mpaped.js', 'src/texts_tacped.js', 'src/texts_mpaped.js'].forEach(function (f) {
+    truthy(html.indexOf('<script src="' + f + '"></script>') > 0, f + ' is in the page');
+    truthy(build.indexOf("'" + f + "'") > 0, f + ' is in the build');
+  });
+  var order = ['src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/tacped.js', 'src/mpaped.js', 'src/bayes.js', 'src/parallel.js', 'src/texts_evr.js', 'src/texts_tacped.js', 'src/texts_mpaped.js', 'src/ui.js'].map(function (f) { return html.indexOf('<script src="' + f + '"></script>'); });
+  truthy(order.every(function (v, i) { return v > 0 && (i === 0 || v > order[i - 1]); }), 'the specs load before bayes.js and the texts before ui.js');
+  var par = read('src/parallel.js').match(/var SOURCES = \[([^\]]*)\]/)[1];
+  truthy(/tacped\.js/.test(par) && /mpaped\.js/.test(par) && par.indexOf('tacped.js') < par.indexOf('bayes.js'), 'the worker pool loads both new engines before bayes.js');
+  ['doseFormWrap', 'dose-form', 'ssFormWrap', 'ss-form', 'scopeWarn'].forEach(function (id) { truthy(new RegExp('id="' + id + '"').test(html), id + ' exists'); });
+  truthy(/id="scopeWarn"[^>]*role="status"/.test(html), 'the warning line is announced politely');
+  truthy(/<div id="doseFormWrap" style="display:none">/.test(html) && /<div id="ssFormWrap" style="display:none">/.test(html), 'the formulation selects are hidden for every other drug');
+  falsy(/'tacped'|'mpaped'|"tacped"|"mpaped"/.test(ui), 'ui.js names no drug id: everything comes from the specs');
+  falsy(/tacped|mpaped/.test(read('src/report.js') + read('src/diagnostics.js') + read('src/chart.js')), 'neither do the report, the diagnostics or the chart');
+});
+
+t('clear all: the link sits in the heading row, right-aligned, and wraps below the hint instead of floating over the next box', function () {
+  var h2 = html.match(/<h2 class="sub-h"[^>]*>Measured concentrations[\s\S]*?<\/h2>|<h2 class="sub-h"[^>]*><span>Measured concentrations[\s\S]*?<\/h2>/)[0];
+  truthy(/display:flex;flex-wrap:wrap/.test(h2) && /id="tplClear"[^>]*margin-left:auto/.test(h2), 'a wrapping flex row with the link pushed right');
+  falsy(/float:\s*right/.test(h2), 'no float: a float drops under a long hint and the next box wraps around it');
+  truthy(/id="sampleHint"/.test(h2) && /id="tplClear"/.test(h2), 'the ids the code binds are kept');
 });
 
 h.runAll().then(function (ok) { if (!ok) process.exit(1); }).catch(function (e) { console.error(e); process.exit(1); });

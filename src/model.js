@@ -176,8 +176,11 @@
     return DRUGS[id];
   }
   function drug() { return DRUGS[current]; }
+  /* The picker's order (owner decision D1): adult and pediatric versions side by side, everolimus last; an unknown id goes after these. */
+  var DRUG_ORDER = ['mpa', 'mpaped', 'tac', 'tacped', 'evr'];
   function listDrugs() {
-    return Object.keys(DRUGS).map(function (k) {
+    var rank = function (k) { var i = DRUG_ORDER.indexOf(k); return i < 0 ? DRUG_ORDER.length : i; };
+    return Object.keys(DRUGS).sort(function (a, b) { return rank(a) - rank(b); }).map(function (k) {
       return { id: k, label: DRUGS[k].label };
     });
   }
@@ -267,6 +270,7 @@
           step: c.step != null ? c.step : null,
           default: c.default != null ? c.default : null,
           missing: c.missing || null,
+          placeholder: c.placeholder || null,
           help: c.help || (c.name + (c.units ? ' (' + c.units + ')' : ''))
         };
       });
@@ -774,7 +778,9 @@
     if (!(amt > 0) || !(tau > 0) || !isFinite(tEnd)) return [];
     var out = [];
     for (var k = n - 1; k >= 0; k--) {
-      out.push({ t: tEnd - k * tau, amt: amt, route: route });
+      var dose = { t: tEnd - k * tau, amt: amt, route: route };
+      if (opts.form) dose.form = opts.form;   // per-dose formulation (pediatric tacrolimus)
+      out.push(dose);
     }
     return out;
   }

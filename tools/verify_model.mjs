@@ -23,6 +23,10 @@ require('../src/version.js');
 require('../src/model.js');
 require('../src/tacrolimus.js');
 require('../src/everolimus.js');
+require('../src/tacped.js');
+require('../src/texts_tacped.js');
+require('../src/mpaped.js');
+require('../src/texts_mpaped.js');
 
 const ECU = globalThis.ECU;
 const spec = ECU.model.spec('mpa');
@@ -179,6 +183,76 @@ if (spec.pending) {
         need(sim.c.every(v => isFinite(v) && v >= 0), 'simulate() must return finite, non-negative concentrations.');
         need(sim.c[0] === 0 && sim.c[2] > sim.c[1] && sim.c[1] > 0, 'concentrations rise from zero with no lag.');
       } catch (e) { problems.push('evr: smoke test failed: ' + (e && e.message ? e.message : e)); }
+    }
+  }
+}
+
+// ---- tacrolimus, pediatric kidney (custom hooks, proportional error, per-dose formulation, AUC and trough window sets) ----
+{
+  const tp = ECU.model.spec('tacped');
+  const need = (cond, msg) => { if (!cond) problems.push('tacped: ' + msg); };
+  need(tp && !tp.pending, 'spec must exist and not be pending.');
+  if (tp) {
+    const c = tp.custom;
+    need(c && ['etaNames', 'omega', 'indivParams', 'simulate', 'prepare', 'exposure', 'toObs', 'fromModel', 'fromModelAuc', 'toModel', 'doseToEngine']
+      .every(k => typeof c[k] === 'function'), 'custom hooks incomplete.');
+    need(tp.units && tp.units.conc && tp.units.auc && tp.units.dose, 'units (conc, auc, dose) must be declared.');
+    need(tp.SIGMA && tp.SIGMA.PROP > 0 && !(tp.SIGMA.ADD > 0) && !(tp.SIGMA.LOG > 0), 'residual error is proportional (PROP > 0, no ADD, no LOG).');
+    need(Array.isArray(tp.covariates) && ['wt', 'hct'].every(id => tp.covariates.some(x => x.id === id)) && tp.covariates.every(x => !x.required || ['wt', 'hct'].includes(x.id)),
+      'covariates are weight and haematocrit, both required, nothing else (no age field).');
+    need(tp.requiresWt === true && tp.wtMin === 3 && tp.wtMax === 200 && tp.scope && tp.scope.wt[0] === 9.1 && tp.scope.wt[1] === 78, 'weight limits 3-200 kg with the data range 9.1-78 kg.');
+    need(Array.isArray(tp.doseForms) && tp.doseForms.map(f => f.value).join() === 'capsule,suspension' && tp.doseForms.every(f => f.label.length <= 28), 'dose formulations capsule and suspension, labels of at most 28 characters.');
+    need(tp.windowOptional === true && tp.windowDefaultLo == null && tp.troughDefaultLo == null && tp.windowStandard == null, 'no window preselected; the engine applies none of its own.');
+    need(Array.isArray(tp.windowSets) && tp.windowSets.length === 6 &&
+      tp.windowSets.every(w => w.label && w.basis && w.grade && (!!(w.trough && w.trough[0] > 0 && w.trough[1] > w.trough[0]) !== !!(w.auc && w.auc[0] > 0 && w.auc[1] > w.auc[0]))),
+      'windowSets must be six well-formed sets, each with either a trough or an AUC window.');
+    need(Array.isArray(tp.assumptions) && tp.assumptions.length > 0, 'assumptions must list the documented limitations.');
+    need(tp.article && /Schijvens/.test(tp.article) && /Heida/.test(tp.article) && /2026/.test(tp.article), 'article must cite Schijvens 2020 and Heida 2026.');
+    need(tp.report && tp.report.scope && tp.report.modelCite && tp.report.windowSource && tp.report.reading && tp.report.lead, 'report spec complete.');
+    need(tp.card && tp.card.name && tp.card.sub && tp.ui && tp.ui.noun && ECU.drugTexts && ECU.drugTexts.tacped, 'card, ui flags and texts registered.');
+    if (c) {
+      need(c.constants.HCT_REF === 0.35, 'HCT_REF is 0.35.');
+      try {
+        need(c.etaNames({}).length === 3, 'three etas (KA, CLINT, V3).');
+        const p = ECU.model.indivParams(25, null, null, { hct: 0.30 }, [0, 0, 0], 'tacped');
+        const sim = ECU.model.simulate([{ t: 0, amt: 3000, form: 'capsule' }], [0, 0.2, 1, 2, 4, 12], p, { id: 'tacped' });
+        need(sim.c.every(v => isFinite(v) && v >= 0), 'simulate() must return finite, non-negative concentrations.');
+        need(sim.c[0] === 0 && sim.c[2] > sim.c[1] && sim.c[1] > 0, 'concentrations rise from zero with no lag.');
+      } catch (e) { problems.push('tacped: smoke test failed: ' + (e && e.message ? e.message : e)); }
+    }
+  }
+}
+
+// ---- MPA, pediatric kidney (custom hooks, proportional error, occasion layer, AUC window 30-60 as default) ----
+{
+  const mp = ECU.model.spec('mpaped');
+  const need = (cond, msg) => { if (!cond) problems.push('mpaped: ' + msg); };
+  need(mp && !mp.pending, 'spec must exist and not be pending.');
+  if (mp) {
+    const c = mp.custom;
+    need(c && ['etaNames', 'omega', 'indivParams', 'simulate', 'prepare', 'exposure', 'toObs', 'fromModel', 'fromModelAuc', 'toModel', 'doseToEngine']
+      .every(k => typeof c[k] === 'function'), 'custom hooks incomplete.');
+    need(mp.units && mp.units.conc === 'mg/L' && mp.units.auc === 'mg·h/L' && mp.units.dose === 'mg', 'units are mg/L, mg·h/L and mg (of MMF).');
+    need(mp.SIGMA && mp.SIGMA.PROP > 0 && !(mp.SIGMA.ADD > 0) && !(mp.SIGMA.LOG > 0), 'residual error is proportional (PROP > 0, no ADD, no LOG).');
+    need(Array.isArray(mp.covariates) && ['wt', 'albumin'].every(id => mp.covariates.some(x => x.id === id)) && mp.covariates.every(x => !x.required || ['wt', 'albumin'].includes(x.id)),
+      'covariates are weight and albumin, both required, nothing else (no age field).');
+    need(mp.requiresWt === true && mp.wtMin === 3 && mp.wtMax === 200 && mp.scope && mp.scope.wt[0] === 12.9 && mp.scope.wt[1] === 79.9 && mp.scope.albumin[0] === 24 && mp.scope.albumin[1] === 42,
+      'weight limits 3-200 kg; data ranges 12.9-79.9 kg and albumin 24-42 g/L.');
+    need(mp.windowDefaultLo === 30 && mp.windowDefaultHi === 60 && mp.windowStandard === 'kidney-ped' && Array.isArray(mp.windowSets) && mp.windowSets.length === 1 &&
+      mp.windowSets.every(w => w.label && w.basis && w.grade && w.auc && w.auc[0] === 30 && w.auc[1] === 60 && w.trough == null), 'one AUC window set 30-60, the default.');
+    need(mp.ui && mp.ui.bloodCorrection === false, 'ui.bloodCorrection is false (plasma assay, no corrected rows).');
+    need(Array.isArray(mp.assumptions) && mp.assumptions.length > 0, 'assumptions must list the documented limitations.');
+    need(mp.article && /Heida/.test(mp.article) && /2024/.test(mp.article), 'article must cite Heida 2024.');
+    need(mp.report && mp.report.scope && mp.report.modelCite && mp.report.windowSource && mp.report.reading && mp.report.lead, 'report spec complete.');
+    need(mp.card && mp.card.name && mp.card.sub && mp.ui && mp.ui.noun && ECU.drugTexts && ECU.drugTexts.mpaped, 'card, ui flags and texts registered.');
+    if (c) {
+      try {
+        need(c.etaNames({}).length === 3 && c.etaNames({ nOcc: 2 }).length === 5, 'three etas plus one per sampled occasion.');
+        const p = ECU.model.indivParams(38.5, null, null, { albumin: 34 }, [0, 0, 0], 'mpaped');
+        const sim = ECU.model.simulate([{ t: 0, amt: 600 }], [0, 0.2, 1, 2, 4, 12], p, { id: 'mpaped' });
+        need(sim.c.every(v => isFinite(v) && v >= 0), 'simulate() must return finite, non-negative concentrations.');
+        need(sim.c[0] === 0 && sim.c[2] > sim.c[1] && sim.c[1] > 0, 'concentrations rise from zero with no lag.');
+      } catch (e) { problems.push('mpaped: smoke test failed: ' + (e && e.message ? e.message : e)); }
     }
   }
 }

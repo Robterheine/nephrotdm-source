@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NephroTDM</title>
-<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-05 06:28 UTC) -->
+<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-05 18:50 UTC) -->
 <style>
 /* fonts.css (inlined) */
 /* IBM Plex Sans (one variable file, weights 400 to 600) and IBM Plex Mono (500, 600), Latin subset, embedded so the single offline file looks the same everywhere.
@@ -577,7 +577,9 @@ html { scroll-behavior: smooth; }
         <div class="drug-cards" id="drugCards" role="group" aria-labelledby="drugLbl"></div>
         <select id="pt-drug" class="sr-only" aria-hidden="true" tabindex="-1" title="Which drug's population PK model to use for this patient">
           <option value="mpa">Mycophenolic acid</option>
+          <option value="mpaped">MPA (pediatric kidney)</option>
           <option value="tac">Tacrolimus (adult kidney)</option>
+          <option value="tacped">Tacrolimus (pediatric)</option>
           <option value="evr">Everolimus (adult kidney)</option>
         </select>
       </div>
@@ -611,6 +613,7 @@ html { scroll-behavior: smooth; }
       </div>
       <!-- Host for covariate rows generated from the model spec (model-driven UI) -->
       <div id="generatedCovariates" style="display:contents"></div>
+      <div class="note warn no-print" id="scopeWarn" role="status" hidden style="flex:1 1 100%"></div>
       <div class="sess-field sess-target">
         <details class="sess-fold" id="windowFold">
           <summary title="Therapeutic window used for probability-in-window. Fold open to change it.">
@@ -684,6 +687,7 @@ html { scroll-behavior: smooth; }
           <div class="f-dt"><label class="f" for="dose-dt">Date &amp; time</label><input type="datetime-local" id="dose-dt" title="Scheduled date and time of the administration"></div>
           <div><label class="f" for="dose-amt" id="doseAmtLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="dose-amt" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Dose in mg as prescribed"></div>
           <div id="dosePredWrap" style="display:none"><label class="f" for="dose-pred">Prednisolone (mg/day), if changed</label><input type="number" inputmode="decimal" id="dose-pred" min="0" step="any" placeholder="patient value" title="Leave empty to use the prednisolone dose of the patient card. Enter a value only if the steroid dose was different on the day of this administration."></div>
+          <div id="doseFormWrap" style="display:none"><label class="f" for="dose-form">Formulation</label><select id="dose-form" title="The formulation of this administration. The suspension is absorbed faster and has lower bioavailability than the capsule; a switch is entered on the dose where it happened."></select></div>
           <div style="align-self:end"><button class="secondary" type="submit" id="doseAdd" style="width:100%" title="Add this dose to the schedule">Add dose</button></div>
         </div>
       </form>
@@ -693,12 +697,13 @@ html { scroll-behavior: smooth; }
       <div class="row3" style="margin-top:8px">
         <div><label class="f" for="ss-dose" id="ssDoseLbl">Dose (mg)</label><input type="number" inputmode="decimal" id="ss-dose" min="10" max="3000" step="any" placeholder="e.g. 1000" title="Maintenance dose per administration, as prescribed"></div>
         <div><label class="f" for="ss-interval">Interval (hours)</label><input type="number" inputmode="decimal" id="ss-interval" min="1" max="48" step="1" placeholder="e.g. 12" title="Dosing interval in hours"></div>
+        <div id="ssFormWrap" style="display:none"><label class="f" for="ss-form">Formulation</label><select id="ss-form" title="The formulation of the regimen (every dose of the stable regimen is given in this form)."></select></div>
         <div class="f-dt"><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
       </div>
       <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”.</div>
     </div>
 
-    <h2 class="sub-h">Measured concentrations <span class="hint" id="sampleHint"></span> <span style="float:right"><button class="linklike" id="tplClear" title="Remove all doses and measurements">clear all</button></span></h2>
+    <h2 class="sub-h" style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px"><span>Measured concentrations <span class="hint" id="sampleHint"></span></span><button class="linklike" id="tplClear" style="margin-left:auto" title="Remove all doses and measurements">clear all</button></h2>
     <div class="note no-print" id="tacDoseNote" hidden>Immediate-release tacrolimus, twice daily (Prograf-type capsules). Prolonged-release products (once daily) are not covered by this model.</div>
     <div class="note warn no-print" id="ecmpsSampleNote" hidden>EC-MPS: absorption is delayed and highly variable, the source model’s own conclusion is that sparse limited sampling is expected to be unreliable for EC-MPS. Prefer more samples spread across the dosing interval (e.g. 1.5, 2, 4, 6, 8 h), and treat trough-only results with particular caution.</div>
     <div class="tbl-wrap"><table class="data" id="obsTable"></table></div>
@@ -846,10 +851,10 @@ html { scroll-behavior: smooth; }
     <h2 id="reportTitle">Generate report</h2>
     <p class="src">The report prints the current patient data, the last <b>run</b> forecast, model findings and the fields below. Both fields are optional and are kept in the session (and in exported session files) until you change them.</p>
     <label class="f" for="rp-prepared">Prepared by (name, role)</label>
-    <input type="text" id="rp-prepared" placeholder="e.g. J. Researcher, clinical pharmacologist" autocomplete="off"
+    <input type="text" id="rp-prepared" placeholder="e.g. J. Researcher, pharmacologist" autocomplete="off"
       title="Who performed the calculations, printed in the report header and on the signature line">
     <label class="f" for="rp-advice" style="margin-top:10px">Advice (free text, printed verbatim in the Advice section)</label>
-    <textarea id="rp-advice" rows="5" placeholder="e.g. Continue current regimen; repeat AUC after any dose change."
+    <textarea id="rp-advice" rows="5" placeholder="e.g. Repeat the AUC after a change."
       title="Your advice for the treating clinician. The model findings are printed separately above it. The advice itself is yours."></textarea>
     <div class="actions-inline" style="margin-top:14px;display:flex;gap:8px">
       <button class="primary" id="rp-generate" style="flex:1" title="Build the report sheet and open the print dialog">Generate report</button>
@@ -875,7 +880,7 @@ html { scroll-behavior: smooth; }
 (function (root) {
   'use strict';
   var ECU = root.ECU = root.ECU || {};
-  ECU.VERSION = '1.4.0';
+  ECU.VERSION = '1.5.0';
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -1059,8 +1064,11 @@ html { scroll-behavior: smooth; }
     return DRUGS[id];
   }
   function drug() { return DRUGS[current]; }
+  /* The picker's order (owner decision D1): adult and pediatric versions side by side, everolimus last; an unknown id goes after these. */
+  var DRUG_ORDER = ['mpa', 'mpaped', 'tac', 'tacped', 'evr'];
   function listDrugs() {
-    return Object.keys(DRUGS).map(function (k) {
+    var rank = function (k) { var i = DRUG_ORDER.indexOf(k); return i < 0 ? DRUG_ORDER.length : i; };
+    return Object.keys(DRUGS).sort(function (a, b) { return rank(a) - rank(b); }).map(function (k) {
       return { id: k, label: DRUGS[k].label };
     });
   }
@@ -1150,6 +1158,7 @@ html { scroll-behavior: smooth; }
           step: c.step != null ? c.step : null,
           default: c.default != null ? c.default : null,
           missing: c.missing || null,
+          placeholder: c.placeholder || null,
           help: c.help || (c.name + (c.units ? ' (' + c.units + ')' : ''))
         };
       });
@@ -1657,7 +1666,9 @@ html { scroll-behavior: smooth; }
     if (!(amt > 0) || !(tau > 0) || !isFinite(tEnd)) return [];
     var out = [];
     for (var k = n - 1; k >= 0; k--) {
-      out.push({ t: tEnd - k * tau, amt: amt, route: route });
+      var dose = { t: tEnd - k * tau, amt: amt, route: route };
+      if (opts.form) dose.form = opts.form;   // per-dose formulation (pediatric tacrolimus)
+      out.push(dose);
     }
     return out;
   }
@@ -2468,6 +2479,698 @@ html { scroll-behavior: smooth; }
   };
 
   M.drugs.evr = SPEC;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* src/tacped.js (inlined) */
+/* =========================================================================
+ * NephroTDM: tacrolimus (pediatric kidney transplant) population PK model
+ *
+ * MODEL: Schijvens AM, de Wildt SN, Cornelissen EAM, van Hesteren FHS, Schreuder MF, ter Heine R. Low bioavailability of oral
+ * tacrolimus suspension in pediatric kidney transplant recipients. Clin Pharmacokinet 2020;59:1483-1491, as REFITTED with weight and
+ * haematocrit as the only covariates in Heida A, Cornelissen EAM, Aarnoutse RE, de Winter BCM, Keizer RJ, ter Heine R, Jager NGL.
+ * Clin Pharmacokinet 2026 (doi 10.1007/s40262-026-01708-3), ESM S1 (the NONMEM code). docs/HANDOFF_PEDIATRIC.md records every decision;
+ * tools/nonmem_verify/ped holds the independent matrix-exponential oracle and the NONMEM 7.6 cross-check this file is held to.
+ *
+ * Units: HOURS, litres, µg (engine); concentrations µg/L; AUC µg·h/L. Doses are entered in mg and converted ONCE at ingestion
+ * (doseToEngine), as for the other tacrolimus models.
+ *
+ * Structure (all linear): dose → three equal absorption stages (Erlang-3, rate KA) → liver ⇄ central plasma ⇄ peripheral; elimination
+ * from the liver only (well-stirred). Everything scales to weight: clearances and Q by (WT/70)^0.75, volumes by WT/70, liver volume
+ * VL = 0.0437 WT^0.9. Hepatic plasma flow QHP = 90 (1 − Ht) (WT/70)^0.75, so Ht is a PK covariate.
+ *   EH = CLINT/(QHP + CLINT)   CLH = EH·QHP   K20 = CLH/VL   K23 = QHP (1 − EH)/VL   K32 = QHP/V3   K34 = Q/V3   K43 = Q/V4
+ *   Cp = A3/V3.  Whole blood: Cwb = Cp (1 + Bmax Ht/(Cp + Kd)), Bmax 418 µg/L, Kd 3.8 µg/L (the stream's own relation).
+ * Formulation (capsule or suspension) belongs to the DOSE: KA 2.83 or 18 /h, relative bioavailability of the suspension 0.46.
+ * Corrected value: the same plasma curve read through the relation at Ht 0.35 (HCT_REF).
+ * Random effects (variances): KA 0.644, CLINT 0.456, V3 0.692, diagonal; none on F; no occasion layer. Residual error proportional,
+ * σ² 0.0374 (the natural-scale proportional path of bayes.js is the Gaussian proportional likelihood of FOCE-I).
+ *
+ * Closed form: three real negative poles (cubic, as in everolimus.js); the Erlang-3 input turns each pole into h(λ,k,t) (hconv).
+ * Because KA varies per draw (η on KA, per dose formulation) the steady-state sum over earlier doses is done exactly, polynomial part
+ * included (ssh), and by direct summation when KA lies within 5 % of a pole (where the closed form divides by k − λ).
+ * Haematocrit is held at ONE value for the PK path (the latest sample's); each sample keeps its own for the blood transform.
+ * ========================================================================= */
+(function (root) {
+  'use strict';
+  var ECU = root.ECU = root.ECU || {};
+  var M = ECU.model;
+
+  var C = {
+    KA_CAP: 2.83, KA_SUS: 18, CLINT: 987, V3: 508, V4: 487, Q: 112, F_SUS: 0.46,
+    QH: 90, VL_COEF: 0.0437, VL_EXP: 0.9, FU: 1,
+    BMAX: 418, KD: 3.8,                          // µg/L (red cells, plasma)
+    HCT_REF: 0.35,                               // reference haematocrit of the corrected value (Schijvens 2019)
+    WT_STD: 70,
+    SIGMA_PROP: 0.0374,
+    OM_KA: 0.644, OM_CLINT: 0.456, OM_V3: 0.692,
+    NSTAGE: 3,
+    WT_MIN: 3, WT_MAX: 200,                      // refusal limits (owner decision D9)
+    HCT_MIN: 0.10, HCT_MAX: 0.70,
+    HCT_WARN: [0.15, 0.60],                      // outside this range a warning is shown (owner decision, 5 October 2026)
+    WT_DATA: [9.1, 78]                           // range of the development data (warning outside)
+  };
+  var FORMS = ['capsule', 'suspension'];
+
+  function num(v) { var x = typeof v === 'number' ? v : parseFloat(v); return isFinite(x) ? x : NaN; }
+
+  function pctCheck(hct) {
+    if (isFinite(hct) && hct > 1 && hct <= 100) throw new Error('Haematocrit is entered in L/L (for example 0.30), not as a percentage.');
+  }
+  function hctRange(hct, what) {
+    if (!(hct >= C.HCT_MIN && hct <= C.HCT_MAX)) throw new Error(what + ' must be between ' + C.HCT_MIN.toFixed(2) + ' and ' + C.HCT_MAX.toFixed(2) + ' L/L.');
+  }
+
+  /* Normalize the raw covariates (strings from the page, numbers from tests). Idempotent. */
+  function normExtra(extra, wt) {
+    extra = extra || {};
+    if (extra._norm) return extra;
+    var w = wt > 0 ? wt : num(extra.wt);
+    if (!(w >= C.WT_MIN && w <= C.WT_MAX)) throw new Error('Weight is required, between ' + C.WT_MIN + ' and ' + C.WT_MAX + ' kg.');
+    var hct = num(extra.hct);
+    pctCheck(hct);
+    if (!isFinite(hct)) throw new Error('Enter the patient’s haematocrit in L/L (for example 0.30).');
+    hctRange(hct, 'Haematocrit');
+    return { _norm: true, wt: w, hct: hct, assay: 'lcms', nOcc: 0, occDays: [] };
+  }
+
+  /* Outside the range the model was built on (not a refusal): the page shows these next to the result. */
+  function scopeWarnings(wt, extra) {
+    var out = [], w = wt > 0 ? wt : num((extra || {}).wt), h = num((extra || {}).hct);
+    // beyond the refusal limits the run is refused with its own message, so no warning is added there
+    if (isFinite(w) && w >= C.WT_MIN && w <= C.WT_MAX && (w < C.WT_DATA[0] || w > C.WT_DATA[1])) out.push('Weight ' + w + ' kg is outside the range the model was built on (' + C.WT_DATA[0] + '–' + C.WT_DATA[1] + ' kg). The model has no data outside this range; treat the estimate as unreliable.');
+    if (isFinite(h) && h >= C.HCT_MIN && h <= C.HCT_MAX && (h < C.HCT_WARN[0] || h > C.HCT_WARN[1])) out.push('Haematocrit ' + h + ' L/L is outside ' + C.HCT_WARN[0].toFixed(2) + ' to ' + C.HCT_WARN[1].toFixed(2) + ', which is unusual for this model. The whole-blood correction and the hepatic blood flow depend on it.');
+    return out;
+  }
+
+  var NAMES = ['KA', 'CLINT', 'V3'];
+  function etaNames() { return NAMES; }
+  function omega() { return { vars: [C.OM_KA, C.OM_CLINT, C.OM_V3], cov: null }; }
+
+  /* Whole blood from plasma at haematocrit hct (µg/L both). */
+  function toObs(cp, hct) { return cp * (1 + C.BMAX * hct / (cp + C.KD)); }
+
+  /* Called once per likelihood evaluation: positional etas (KA, CLINT, V3). */
+  function indivParams(wt, age, renal, extra, eta) {
+    var ex = normExtra(extra, wt);
+    eta = eta || [];
+    var w = ex.wt, clwt = Math.pow(w / C.WT_STD, 0.75), vwt = w / C.WT_STD;
+    var vl = C.VL_COEF * Math.pow(w, C.VL_EXP);
+    var ek = Math.exp(eta[0] || 0);
+    var clint = C.CLINT * clwt * Math.exp(eta[1] || 0);
+    var v3 = C.V3 * vwt * Math.exp(eta[2] || 0), v4 = C.V4 * vwt, q = C.Q * clwt;
+    var qhp = C.QH * (1 - ex.hct) * clwt;
+    var eh = clint * C.FU / (qhp + clint * C.FU), clh = eh * qhp;
+    var k34 = q / v3, k43 = q / v4;
+    return {
+      wt: w, age: null, renal: null, extra: ex, eta: eta, etaNames: NAMES,
+      kCap: C.KA_CAP * ek, kSus: C.KA_SUS * ek, CLINT: clint, V3: v3, V4: v4, Q: q, VL: vl, QHP: qhp, EH: eh, CLH: clh,
+      K20: clh / vl, K23: qhp * (1 - eh) / vl, K32: qhp / v3, K34: k34, K43: k43,
+      // aliases the shared code reads (terminal half-life warning only)
+      cl: clh, v1: v3, k12: k34, k21: k43, ka: C.KA_CAP * ek, form: null, mixIdx: 0, drugId: 'tacped', _poles: undefined
+    };
+  }
+
+  /* The three disposition poles and the residues of the plasma concentration, Cp(t) = Σ r_i e^(−λ_i t) per unit amount entering the
+   * liver (as in everolimus.js; the characteristic polynomial is D(s) = (s+a)((s+b)(s+c) − K43 K34) − K32 K23 (s+c)). */
+  function poles(p) {
+    var a = p.K20 + p.K23, b = p.K32 + p.K34, c = p.K43;
+    var c2 = a + b + c, c1 = a * b + a * c + b * c - p.K43 * p.K34 - p.K32 * p.K23, c0 = a * (b * c - p.K43 * p.K34) - p.K32 * p.K23 * c;
+    var q = (3 * c1 - c2 * c2) / 9, r = (9 * c2 * c1 - 27 * c0 - 2 * c2 * c2 * c2) / 54;
+    if (!(q < 0)) return null;
+    var ratio = r / Math.sqrt(-q * q * q);
+    if (!(Math.abs(ratio) < 1)) return null;
+    var th = Math.acos(ratio), m = 2 * Math.sqrt(-q), out = [], j;
+    for (j = 0; j < 3; j++) {
+      var s = m * Math.cos((th + 2 * Math.PI * j) / 3) - c2 / 3;
+      var dp = 3 * s * s + 2 * c2 * s + c1;
+      if (!(s < 0) || !isFinite(dp) || dp === 0) return null;
+      out.push({ lam: -s, r: p.K23 * (s + c) / dp / p.V3 });
+    }
+    out.sort(function (x, y) { return x.lam - y.lam; });
+    if (!(out[1].lam - out[0].lam > 1e-9 * out[0].lam) || !(out[2].lam - out[1].lam > 1e-9 * out[1].lam)) return null;
+    return out;
+  }
+
+  /* Erlang-3 input convolved with e^(−λt): h = (k/(k−λ))^3 [e^(−λt) − e^(−kt) Σ_{j<3} x^j/j!], x = (k−λ)t. The bracket cancels when |x| is
+   * small and overflows when λ > k, so |x| < 1.5 uses the tail form h = (kt)^3 e^(−kt) Σ_{m≥0} x^m/(m+3)! (no cancellation, no division
+   * by k − λ, valid for x of either sign). Verified for KA within 1e-6 (relative) of a pole in tests/test_pediatric.js. */
+  function hconv(lam, k, t) {
+    var d = k - lam, x = d * t;
+    if (Math.abs(x) < 1.5) {
+      var s = 0, term = 1 / 6, kt = k * t;
+      for (var m = 0; m < 24; m++) { s += term; term *= x / (m + 4); }
+      return kt * kt * kt * Math.exp(-kt) * s;
+    }
+    var f = Math.pow(k / d, 3), sp = 1 + x + x * x / 2;
+    return f * (Math.exp(-lam * t) - Math.exp(-k * t) * sp);
+  }
+
+  /* Σ_{m≥0} h(λ, k, dt + m T): one pole of the steady-state response, dt in (0, T]. Exact, polynomial part included (with u = e^(−kT):
+   * Σ u^m = S0, Σ m u^m = S1, Σ m² u^m = S2). Within 5 % of the pole the closed form divides by (k − λ)^3, so the sum is taken term by
+   * term instead (the terms fall as e^(−λ T m), at least a factor e^(−λ T) per dose; capped at 5000). */
+  function ssh(lam, k, dt, T) {
+    var d = k - lam;
+    if (Math.abs(d) < 0.05 * k) {
+      var s = 0, prev = Infinity;
+      for (var m = 0; m < 5000; m++) {
+        var h = hconv(lam, k, dt + m * T);
+        s += h;
+        if (m > 2 && Math.abs(h) < 1e-17 * Math.abs(s) && Math.abs(h) <= Math.abs(prev)) break;
+        prev = h;
+      }
+      return s;
+    }
+    var u = Math.exp(-k * T), om = 1 - u, S0 = 1 / om, S1 = u / (om * om), S2 = u * (1 + u) / (om * om * om);
+    var poly = S0 * (1 + d * dt + d * d * dt * dt / 2) + S1 * (d * T + d * d * dt * T) + S2 * (d * d * T * T / 2);
+    return Math.pow(k / d, 3) * (Math.exp(-lam * dt) / (-Math.expm1(-lam * T)) - Math.exp(-k * dt) * poly);
+  }
+
+  /* doses: [{t, amt (µg), form}]; opts.ss = {amt, every, tEnd, form}: endless train, last dose at tEnd. Each dose carries its own absorption
+   * rate and relative F (a superposition of independent linear responses, exact). */
+  function simulate(doses, outTimes, p, opts) {
+    opts = opts || {};
+    var fail = function () { return { c: outTimes.map(function () { return 0; }), failed: true, method: 'closed' }; };
+    var pl = p._poles !== undefined ? p._poles : (p._poles = poles(p));
+    if (!pl) return fail();
+    var n = outTimes.length, res = new Array(n), i, j, q, dt, sum, d, kd, ad;
+    var ss = opts.ss || null, T = 0, ssA = 0, ssTs = 0, ssK = 0;
+    if (ss) {
+      T = ss.every; ssTs = ss.tEnd;
+      var sus = ss.form === 'suspension';
+      ssK = sus ? p.kSus : p.kCap; ssA = ss.amt * (sus ? C.F_SUS : 1);
+    }
+    for (i = 0; i < n; i++) {
+      var tt = outTimes[i]; sum = 0;
+      for (j = 0; j < doses.length; j++) {
+        d = doses[j];
+        if (!(d.amt > 0)) continue;
+        dt = tt - d.t;
+        if (dt > 0) {
+          var isSus = d.form === 'suspension';
+          kd = isSus ? p.kSus : p.kCap; ad = d.amt * (isSus ? C.F_SUS : 1);
+          var s1 = 0; for (q = 0; q < 3; q++) s1 += pl[q].r * hconv(pl[q].lam, kd, dt);
+          sum += ad * s1;
+        }
+      }
+      if (ss) {
+        dt = tt - ssTs;
+        if (!(dt > 0)) dt += T * (Math.floor(-dt / T) + 1);
+        var s2 = 0;
+        for (q = 0; q < 3; q++) s2 += pl[q].r * ssh(pl[q].lam, ssK, dt, T);
+        sum += ssA * s2;
+      }
+      if (!isFinite(sum)) return fail();
+      res[i] = sum;
+    }
+    return { c: res, failed: false, method: 'closed' };
+  }
+
+  /* ---- ingestion: assay is fixed (LC-MS/MS), every sample carries a haematocrit, every dose carries its formulation ------------ */
+  function prepare(inp) {
+    var ex0 = normExtra(inp.extra, inp.wt);
+    var doses = (inp.doses || []).map(function (d) { return { t: d.t, amt: d.amt, route: d.route, form: d.form }; });
+    doses.sort(function (a, b) { return a.t - b.t; });
+    doses.forEach(function (d, i) {
+      if (FORMS.indexOf(d.form) < 0) throw new Error('Choose the formulation (capsule or suspension) for dose ' + (i + 1) + '.');
+    });
+    var obs = [];
+    (inp.obs || []).forEach(function (o) {
+      var hct = isFinite(o.hct) ? o.hct : ex0.hct;
+      pctCheck(hct);
+      hctRange(hct, 'Every sample needs a haematocrit, and it');
+      obs.push({ t: o.t, c: o.c, cDisp: o.c, hct: hct });
+    });
+    // the haematocrit the reported (actual) value refers to, and the one the PK path uses: the latest sample's, else the patient field
+    var latest = null;                               // the latest sample by time (the input order is not trusted)
+    obs.forEach(function (o) { if (!latest || o.t >= latest.t) latest = o; });
+    var hctReport = latest ? latest.hct : ex0.hct;
+    var ex = Object.assign({}, ex0, { hct: hctReport, nOcc: 0, nSampled: 0, occDays: [] });
+    return { extra: ex, doses: doses, obs: obs, assay: 'lcms', hctReport: hctReport };
+  }
+
+  function reportExtra(ex) { return normExtra(ex); }
+
+  /* The suspension is absorbed within minutes (KA 18 /h, up to 130 /h in the prior's tail): on the app's uniform 0.25 h grid the trapezoid read the
+   * AUC up to 1 % low there (measured against a 0.005 h reference). The integration therefore uses its own composite Simpson rule over the same
+   * interval, in three panels: 0.0125 h steps in the first quarter hour, about 0.05 h to one hour, 0.25 h after (Simpson, not trapezoid, because a
+   * trapezoid on a grid whose step changes loses the cancellation a uniform periodic grid enjoys). Same start, same end (the trough). */
+  function simpsonGrid(g) {
+    var t0 = g[0], T = g[g.length - 1] - t0, t = [], w = [], i;
+    function panel(a, b, n) {                       // n even
+      var h = (b - a) / n;
+      for (i = 0; i <= n; i++) {
+        var wt = (i === 0 || i === n) ? 1 : (i % 2 ? 4 : 2) , x = a + i * h;
+        if (i === 0 && t.length) { w[w.length - 1] += h / 3; continue; }   // shared end point of the previous panel
+        t.push(x); w.push(wt * h / 3);
+      }
+    }
+    if (!(T > 1)) {                                  // a very short interval: trapezoid on the given grid
+      for (i = 0; i < g.length; i++) { t.push(g[i]); w.push(((i === 0 ? 0 : g[i] - g[i - 1]) + (i === g.length - 1 ? 0 : g[i + 1] - g[i])) / 2); }
+      return { t: t, w: w };
+    }
+    panel(t0, t0 + 0.25, 20); panel(t0 + 0.25, t0 + 1, 15 + 1); panel(t0 + 1, t0 + T, 2 * Math.ceil((T - 1) / 0.5));
+    return { t: t, w: w };
+  }
+
+  /* Steady-state exposure per draw: whole-blood AUC over the interval and the trough, at the patient's haematocrit and at the reference
+   * one. ctx = { wt, extra, ss:{amt,every,tEnd,form}, grid, hctAct, hctRef }. */
+  function exposure(draws, ctx) {
+    var ex0 = reportExtra(ctx.extra), n = draws.length, sg = simpsonGrid(ctx.grid), grid = sg.t, ng = grid.length;
+    var aucA = new Array(n), trA = new Array(n), aucR = new Array(n), trR = new Array(n);
+    for (var d = 0; d < n; d++) {
+      var p = indivParams(ctx.wt, null, null, ex0, draws[d]);
+      var sim = simulate([], grid, p, { ss: ctx.ss });
+      if (sim.failed) { aucA[d] = trA[d] = aucR[d] = trR[d] = NaN; continue; }
+      var sa = 0, sr = 0;
+      for (var k = 0; k < ng; k++) { sa += sg.w[k] * toObs(sim.c[k], ctx.hctAct); sr += sg.w[k] * toObs(sim.c[k], ctx.hctRef); }
+      aucA[d] = sa; aucR[d] = sr; trA[d] = toObs(sim.c[ng - 1], ctx.hctAct); trR[d] = toObs(sim.c[ng - 1], ctx.hctRef);
+    }
+    return { aucA: aucA, trA: trA, aucR: aucR, trR: trR };
+  }
+
+  // LC-MS/MS only: model scale = reported scale
+  function fromModel(v) { return v; }
+  function fromModelAuc(v) { return v; }
+  function toModel(v) { return v; }
+
+  var WIN_SRC_AUC = 'Local guideline and Wallemacq 2009, as used in Heida 2026 (Table 2). The authors normalised AUCs to haematocrit 0.35 before comparing, following Schijvens 2019; this app does the same, so the corrected value is the one compared with the window.';
+  var WIN_SRC_TR = 'Brunet 2019 (IATDMCT second consensus) for children, as cited in Heida 2026. These are whole-blood values; Schijvens 2019 takes published targets to refer to haematocrit 0.35, and this app compares the corrected value with them.';
+
+  var SPEC = {
+    id: 'tacped',
+    label: 'Tacrolimus (pediatric kidney)',
+    article: 'Schijvens AM, de Wildt SN, Cornelissen EAM, van Hesteren FHS, Schreuder MF, ter Heine R. Low bioavailability of oral tacrolimus suspension in pediatric kidney transplant recipients. Clin Pharmacokinet 2020;59:1483–1491; refitted with weight and haematocrit as the only covariates in Heida A, Cornelissen EAM, Aarnoutse RE, de Winter BCM, Keizer RJ, ter Heine R, Jager NGL. Clin Pharmacokinet 2026 (doi 10.1007/s40262-026-01708-3).',
+    backgroundLabel: 'Tacrolimus background',
+    card: { name: 'Tacrolimus (pediatric kidney)', sub: 'AUC and trough · Schijvens 2020' },
+    info: 'Semi-mechanistic model for twice-daily tacrolimus in children with a kidney transplant: three equal absorption stages, a liver compartment with flow-limited extraction, and a two-compartment plasma disposition, scaled to weight. Capsule and suspension differ in absorption rate and bioavailability and are chosen per dose. Whole-blood concentrations follow from the haematocrit through saturable red-cell binding. Reported: steady-state AUC0–12h and trough, as measured (actual) and corrected to haematocrit 0.35. For research use only; not a medical device.',
+    pending: false,
+    report: {
+      lead: 'auc',
+      modelCite: 'Schijvens AM, et al. Clin Pharmacokinet 2020;59:1483–1491; refit: Heida A, et al. Clin Pharmacokinet 2026.',
+      scope: 'Children with a kidney transplant. Describes the sampled day. · twice-daily tacrolimus · research use only',
+      windowSource: 'Local guideline, Wallemacq 2009 (AUC); Brunet 2019 (trough), via Heida 2026.',
+      noWindow: { auc: ' Pick one in the background dialog.', trough: ' Pick one in the background dialog.' },
+      reading: ['Corrected: the same plasma concentration read at haematocrit @H.',
+        'The estimate describes the day of the samples, and its interval has no day-to-day variability. In a small prospective evaluation (29 children), the AUC predicted from one occasion did not match the AUC measured about three months later.',
+        'Not in the model: height, age, interactions, liver function, food.']
+    },
+    ui: { noun: 'tacrolimus', reportNoun: 'tacrolimus (pediatric kidney)', windowOn: 'corrected', wtPlaceholder: 'e.g. 25', weight: true, predDose: false, doseForm: true, badge: 'Schijvens 2020 · tacrolimus (children)', chartTitle: 'Tacrolimus whole-blood concentration–time forecast', shrinkEta: 'CLINT', modelLine: 'Schijvens 2020, refit 2026 (children with a kidney transplant, twice-daily tacrolimus)' },
+    units: { conc: 'µg/L', auc: 'µg·h/L', dose: 'mg', concAlt: 'ng/mL' },
+    windowOptional: true,
+
+    THETA: { CLINT: C.CLINT, V3: C.V3, Q: C.Q, V4: C.V4 },
+    EXPO: { CLQ: 0.75, V: 1 },
+    WT_REF: 70,
+    requiresWt: true,
+    ETA: { shared: NAMES.slice(), iiv: { KA: C.OM_KA, CLINT: C.OM_CLINT, V3: C.OM_V3 } },
+    FORMS: null,
+    formDefault: null,
+    doseForms: [{ value: 'capsule', label: 'Capsule' }, { value: 'suspension', label: 'Suspension' }],
+    SIGMA: { ADD: 0, PROP: C.SIGMA_PROP },
+    KA_D: C.KA_CAP,
+    BIOAVAIL_SC: 1,
+    INFUSION_D: 0.5,
+    adminRoutes: ['oral'],
+
+    covariates: [
+      { id: 'wt', name: 'Weight', type: 'number', required: true, units: 'kg', min: C.WT_MIN, max: C.WT_MAX, step: 'any',
+        help: 'Body weight in kg. Clearances scale to weight to the power 0.75, volumes in proportion. The model was built on children of 9–78 kg.' },
+      { id: 'hct', name: 'Haematocrit', type: 'number', required: true, units: 'L/L', min: C.HCT_MIN, max: C.HCT_MAX, step: 'any', placeholder: 'e.g. 0.33',
+        help: 'Haematocrit as a fraction (0.30, not 30 %). Tacrolimus is bound to red cells, so whole-blood concentrations rise with haematocrit at an unchanged plasma concentration, and hepatic blood flow follows it. Used for the forecast without samples and as the default for sample rows; each sample can carry its own value.' }
+    ],
+    covariateWeight: true, covariateAge: false, covariateRenal: false, covariateExtra: false,
+
+    dose: { min: 0.05, max: 30, step: 'any', default: 1.5 },
+    wtMin: C.WT_MIN, wtMax: C.WT_MAX, wtStep: 0.1,
+    scope: { wt: C.WT_DATA },
+    ssIntervalDefault: 12,
+    ssNDoses: 30,
+    intervalRange: { min: 10, max: 14, text: 'twice-daily tacrolimus (about 12 h between doses)' },
+    obsValMin: 0.5, obsValMax: 100,
+    windowRange: { min: 0.1, max: 5000 },
+    // No set is preselected: time after transplantation is not an input, so the user picks the set (the Background dialog's "Use" buttons).
+    windowDefaultLo: null, windowDefaultHi: null,
+    troughDefaultLo: null, troughDefaultHi: null,
+    windowStandard: null,
+    windowSets: [
+      { id: 'ped-0-6w', label: 'AUC, 0–6 weeks after transplant', trough: null, auc: [180, 270], grade: 'Local guideline', basis: WIN_SRC_AUC },
+      { id: 'ped-6w-6m', label: 'AUC, 6 weeks–6 months after transplant', trough: null, auc: [100, 250], grade: 'Local guideline', basis: WIN_SRC_AUC },
+      { id: 'ped-6-12m', label: 'AUC, 6–12 months after transplant', trough: null, auc: [100, 190], grade: 'Local guideline', basis: WIN_SRC_AUC },
+      { id: 'ped-12m+', label: 'AUC, more than 12 months after transplant', trough: null, auc: [80, 150], grade: 'Local guideline', basis: WIN_SRC_AUC },
+      { id: 'ped-trough-early', label: 'Trough, first 2 months after transplant', trough: [10, 20], auc: null, grade: 'Consensus, as cited in Heida 2026', basis: WIN_SRC_TR },
+      { id: 'ped-trough-late', label: 'Trough, from 2 months after transplant', trough: [5, 10], auc: null, grade: 'Consensus, as cited in Heida 2026', basis: WIN_SRC_TR }
+    ],
+    windowHint: 'No window is preselected: the target depends on the time since transplantation. Pick a set in the Tacrolimus background dialog, or type your own. The targets are taken to refer to whole blood at haematocrit 0.35. µg/L is the same as ng/mL.',
+    samplePeak: 'In the model authors’ evaluation, samples at 0, 1 and 2 hours after the dose gave AUC estimates within their 25% limit. Enter the exact times and the haematocrit of the same day.',
+    perChainSeeds: true,
+    mcmcScale: function (dim) { return Math.min(1, 2.38 / Math.sqrt(dim)); },
+    mcmcIters: function () { return 400000; },
+    yMaxCap: null,
+    assay: 'LC-MS/MS',
+    assumptions: [
+      'Children with a kidney transplant on twice-daily tacrolimus as capsule or suspension. Built on children aged 1–17 years, weight 9–78 kg, sampled at a median of 11 days after transplantation. Adults, prolonged-release products and other organs are not covered',
+      'Concentrations must come from an LC-MS/MS assay in whole blood; immunoassay results are not interchangeable and have no conversion',
+      'Reported values are the patient’s typical steady-state level at the haematocrit of the most recent sample. The model has no day-to-day effect: the estimate describes this patient on the day of the samples, and a later measurement scatters more than the interval shows',
+      'Corrected to haematocrit 0.35 means the whole-blood concentration this patient would show with the same plasma concentration at a haematocrit of 0.35, computed with the model’s red-cell binding relation',
+      'The formulation is chosen per dose: the suspension is absorbed faster (18 against 2.83 per hour) and has 0.46 times the bioavailability of the capsule',
+      'Haematocrit is held at one value for the pharmacokinetics, that of the latest sample; each sample keeps its own haematocrit for the blood reading. When the haematocrit differs by more than about 0.05 between samples, earlier samples are fitted less well (by a few per cent on average, by up to about 20% for some)',
+      'Refitted without height (weight and haematocrit are the only covariates). Estimated with NONMEM FOCE-I; no inter-occasion variability',
+      'Not in the model: height, age, interactions with CYP3A inhibitors and inducers, CYP3A5 genotype, liver function, food, adherence, time since transplantation'
+    ],
+    custom: null
+  };
+
+  SPEC.custom = {
+    constants: C, assays: { lcms: { label: 'LC-MS/MS', m: 1, b: 0 } },
+    etaNames: etaNames, omega: omega,
+    indivParams: indivParams, simulate: simulate, poles: poles, hconv: hconv, ssh: ssh,
+    prepare: prepare, exposure: exposure, reportExtra: reportExtra, normExtra: normExtra, scopeWarnings: scopeWarnings,
+    toObs: toObs,
+    fromModel: fromModel, fromModelAuc: fromModelAuc, toModel: toModel,
+    doseToEngine: function (mg) { return mg * 1000; }
+  };
+
+  M.drugs.tacped = SPEC;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* src/mpaped.js (inlined) */
+/* =========================================================================
+ * NephroTDM: mycophenolic acid (pediatric kidney transplant) population PK model
+ *
+ * MODEL: Heida A, Jager NGL, Aarnoutse RE, de Winter BCM, de Jong H, Keizer RJ, Cornelissen EAM, ter Heine R. Model-informed dose optimization
+ * of mycophenolic acid in pediatric kidney transplant patients. Eur J Clin Pharmacol 2024;80:1761-1771. The structure is that of the authors' run 57
+ * (NONMEM listing mmfrun57.lst; the ESM text is a partial rename of it), the parameter VALUES are the article's (Table 2), by owner decision.
+ * docs/HANDOFF_PEDIATRIC.md records every decision; tools/nonmem_verify/ped holds the independent oracle and the NONMEM 7.6 cross-check.
+ *
+ * Units: HOURS, litres; dose in mg of MMF, concentration in mg/L of MPA (the model's CL/F absorbs the MMF-to-MPA factor, so NO 0.739-type
+ * conversion is applied here); AUC mg·h/L.
+ *
+ * Structure (all linear): dose → one transit compartment → central ⇄ peripheral, both transfer steps with the same rate KTR (an Erlang-2
+ * input); first-order elimination from the central compartment. Cp = A_central / Vc.
+ *   CL/F = 16.0 (WT/70)^0.75 (ALB/34)^−2.49   Vc/F = 24.9 WT/70   Vp/F = 1590 WT/70   Q/F = 36.2 (WT/70)^0.75   KTR = 1.48 (WT/70)^−0.25
+ * Random effects (variances): CL 0.139, Vc 2.42, Q 0.337 (diagonal; none on Vp and KTR); inter-occasion variability on the relative bioavailability F,
+ * ω² 0.19, one variance for up to 10 occasions (an occasion is a calendar day). Residual error proportional, σ² 0.223 (the natural-scale
+ * proportional path of bayes.js is the Gaussian proportional likelihood of FOCE-I).
+ *
+ * Exact identity used for the reported AUC: steady-state AUC0-τ = dose / CL (typical day, κ = 0), independent of Vc, Vp, Q and KTR.
+ * Closed form: two real negative poles (quadratic); the Erlang-2 input turns each pole into h(λ,k,t) (hconv). KTR is fixed per patient, but the
+ * disposition poles vary per draw and can lie close to KTR, so the steady-state sum over earlier doses (ssh) is exact and falls back to
+ * direct summation within 5 % of a pole.
+ * ========================================================================= */
+(function (root) {
+  'use strict';
+  var ECU = root.ECU = root.ECU || {};
+  var M = ECU.model;
+
+  var C = {
+    CL: 16.0, VC: 24.9, VP: 1590, Q: 36.2, KTR: 1.48, ALB_EXP: -2.49, ALB_REF: 34, WT_STD: 70,
+    SIGMA_PROP: 0.223,
+    OM_CL: 0.139, OM_VC: 2.42, OM_Q: 0.337, OM_OCC: 0.19,
+    NSTAGE: 2, MAX_OCC: 10,
+    WT_MIN: 3, WT_MAX: 200, ALB_MIN: 5, ALB_MAX: 50,        // refusal limits (owner decision D9)
+    WT_DATA: [12.9, 79.9], ALB_DATA: [24, 42],               // range of the development data (warning outside)
+    HCT_REF: null                                            // no blood correction for MPA (plasma assay)
+  };
+
+  function num(v) { var x = typeof v === 'number' ? v : parseFloat(v); return isFinite(x) ? x : NaN; }
+
+  /* Normalize the raw covariates (strings from the page, numbers from tests). Idempotent. */
+  function normExtra(extra, wt) {
+    extra = extra || {};
+    if (extra._norm) return extra;
+    var w = wt > 0 ? wt : num(extra.wt);
+    if (!(w >= C.WT_MIN && w <= C.WT_MAX)) throw new Error('Weight is required, between ' + C.WT_MIN + ' and ' + C.WT_MAX + ' kg.');
+    var alb = num(extra.albumin);
+    if (!isFinite(alb)) throw new Error('Enter the patient’s albumin in g/L (for example 34). The model needs it.');
+    if (!(alb >= C.ALB_MIN && alb <= C.ALB_MAX)) throw new Error('Albumin must be between ' + C.ALB_MIN + ' and ' + C.ALB_MAX + ' g/L (entered in g/L, not g/dL).');
+    return { _norm: true, wt: w, albumin: alb, assay: 'emit', nOcc: 0, occDays: [] };
+  }
+
+  /* Outside the range the model was built on (not a refusal): the page shows these next to the result. */
+  function scopeWarnings(wt, extra) {
+    var out = [], w = wt > 0 ? wt : num((extra || {}).wt), a = num((extra || {}).albumin);
+    // beyond the refusal limits the run is refused with its own message, so no warning is added there
+    if (isFinite(w) && w >= C.WT_MIN && w <= C.WT_MAX && (w < C.WT_DATA[0] || w > C.WT_DATA[1])) out.push('Weight ' + w + ' kg is outside the range the model was built on (' + C.WT_DATA[0] + '–' + C.WT_DATA[1] + ' kg). The model has no data outside this range; treat the estimate as unreliable.');
+    if (isFinite(a) && a >= C.ALB_MIN && a <= C.ALB_MAX && (a < C.ALB_DATA[0] || a > C.ALB_DATA[1])) out.push('Albumin ' + a + ' g/L is outside the range the model was built on (' + C.ALB_DATA[0] + '–' + C.ALB_DATA[1] + ' g/L). The model extrapolates a steep albumin effect here, so the estimate can be far off.');
+    return out;
+  }
+
+  /* η layout: CL, Vc, Q, then one κ on F per sampled occasion (calendar day). */
+  function etaNames(ex) {
+    var out = ['CL', 'VC', 'Q'];
+    for (var j = 0; j < ((ex && ex.nOcc) || 0); j++) out.push('KF' + j);
+    return out;
+  }
+  function omega(ex) {
+    var n = ((ex && ex.nOcc) || 0), vars = [C.OM_CL, C.OM_VC, C.OM_Q], i, j;
+    for (i = 0; i < n; i++) vars.push(C.OM_OCC);
+    var cov = [];
+    for (i = 0; i < vars.length; i++) { cov.push(new Array(vars.length).fill(0)); cov[i][i] = vars[i]; }
+    return { vars: vars, cov: cov };
+  }
+
+  var NAMES_CACHE = [];
+  function namesFor(nOcc) { return NAMES_CACHE[nOcc] || (NAMES_CACHE[nOcc] = etaNames({ nOcc: nOcc })); }
+
+  /* Called once per likelihood evaluation: positional etas (CL, Vc, Q, κF_j at 3 + j). */
+  function indivParams(wt, age, renal, extra, eta) {
+    var ex = normExtra(extra, wt), n = ex.nOcc, names = namesFor(n), m = names.length, i;
+    eta = eta || [];
+    var e = new Array(m);
+    for (i = 0; i < m; i++) e[i] = eta[i] || 0;
+    var w = ex.wt, clw = Math.pow(w / C.WT_STD, 0.75), vw = w / C.WT_STD;
+    var cl = C.CL * clw * Math.pow(ex.albumin / C.ALB_REF, C.ALB_EXP) * Math.exp(e[0]);
+    var vc = C.VC * vw * Math.exp(e[1]), vp = C.VP * vw, q = C.Q * clw * Math.exp(e[2]);
+    var kF = new Array(n);
+    for (i = 0; i < n; i++) kF[i] = e[3 + i];
+    return {
+      wt: w, age: null, renal: null, extra: ex, eta: e, etaNames: names,
+      CL: cl, VC: vc, VP: vp, Q: q, KTR: C.KTR * Math.pow(w / C.WT_STD, -0.25), kF: kF,
+      k10: cl / vc, k12: q / vc, k21: q / vp,
+      // aliases the shared code reads (terminal half-life warning only)
+      cl: cl, v1: vc, ka: C.KTR, form: null, mixIdx: 0, drugId: 'mpaped', _poles: undefined
+    };
+  }
+
+  /* The two disposition poles and the residues of the plasma concentration, Cp(t) = Σ r_i e^(−λ_i t) per unit amount entering the central
+   * compartment: λ roots of s² − (k10+k12+k21)s + k10 k21 = 0 (positive rates), A_central = [(k21−λ1)e^(−λ1 t) + (λ2−k21)e^(−λ2 t)]/(λ2−λ1). */
+  function poles(p) {
+    var b = p.k10 + p.k12 + p.k21, c = p.k10 * p.k21, disc = b * b - 4 * c;
+    if (!(disc > 0) || !(c > 0)) return null;
+    var l2 = (b + Math.sqrt(disc)) / 2, l1 = c / l2;
+    if (!(l2 - l1 > 1e-9 * l2)) return null;
+    return [{ lam: l1, r: (p.k21 - l1) / (l2 - l1) / p.VC }, { lam: l2, r: (l2 - p.k21) / (l2 - l1) / p.VC }];
+  }
+
+  /* Erlang-2 input convolved with e^(−λt): h = (k/(k−λ))² [e^(−λt) − e^(−kt)(1 + x)], x = (k−λ)t. For |x| < 1.5 the tail form
+   * h = (kt)² e^(−kt) Σ_{m≥0} x^m/(m+2)! (no cancellation, no division by k − λ, valid for x of either sign). */
+  function hconv(lam, k, t) {
+    var d = k - lam, x = d * t;
+    if (Math.abs(x) < 1.5) {
+      var s = 0, term = 0.5, kt = k * t;
+      for (var m = 0; m < 24; m++) { s += term; term *= x / (m + 3); }
+      return kt * kt * Math.exp(-kt) * s;
+    }
+    return Math.pow(k / d, 2) * (Math.exp(-lam * t) - Math.exp(-k * t) * (1 + x));
+  }
+
+  /* Σ_{m≥0} h(λ, k, dt + m T), dt in (0, T]. Exact (with u = e^(−kT): Σ u^m = S0, Σ m u^m = S1); within 5 % of the pole the closed form divides by
+   * (k − λ)², so the sum is taken term by term (capped at 5000 doses). */
+  function ssh(lam, k, dt, T) {
+    var d = k - lam;
+    if (Math.abs(d) < 0.05 * k) {
+      var s = 0, prev = Infinity;
+      for (var m = 0; m < 5000; m++) {
+        var h = hconv(lam, k, dt + m * T);
+        s += h;
+        if (m > 2 && Math.abs(h) < 1e-17 * Math.abs(s) && Math.abs(h) <= Math.abs(prev)) break;
+        prev = h;
+      }
+      return s;
+    }
+    var u = Math.exp(-k * T), om = 1 - u, S0 = 1 / om, S1 = u / (om * om);
+    return Math.pow(k / d, 2) * (Math.exp(-lam * dt) / (-Math.expm1(-lam * T)) - Math.exp(-k * dt) * (S0 * (1 + d * dt) + S1 * d * T));
+  }
+
+  /* doses: [{t, amt (mg MMF), occIdx?, delta?}]. A `delta` dose contributes only its deviation from κ = 0 (steady-state mode, where the endless
+   * train at κ = 0 already contains it). opts.ss = { amt, every, tEnd }: endless train, last dose at tEnd, κ = 0. */
+  function simulate(doses, outTimes, p, opts) {
+    opts = opts || {};
+    var fail = function () { return { c: outTimes.map(function () { return 0; }), failed: true, method: 'closed' }; };
+    var pl = p._poles !== undefined ? p._poles : (p._poles = poles(p));
+    if (!pl) return fail();
+    var k = p.KTR, n = outTimes.length, res = new Array(n), i, j, q, dt, sum, d;
+    var terms = [];
+    for (j = 0; j < doses.length; j++) {
+      d = doses[j];
+      if (!(d.amt > 0)) continue;
+      var kf = d.occIdx != null && d.occIdx >= 0 ? Math.exp(p.kF[d.occIdx] || 0) : 1;
+      terms.push({ t: d.t, a: d.amt * (d.delta ? kf - 1 : kf) });
+    }
+    var ss = opts.ss || null, T = 0, ssA = 0, ssTs = 0;
+    if (ss) { T = ss.every; ssA = ss.amt; ssTs = ss.tEnd; }
+    for (i = 0; i < n; i++) {
+      var tt = outTimes[i]; sum = 0;
+      for (j = 0; j < terms.length; j++) {
+        dt = tt - terms[j].t;
+        if (dt > 0) { var s1 = 0; for (q = 0; q < 2; q++) s1 += pl[q].r * hconv(pl[q].lam, k, dt); sum += terms[j].a * s1; }
+      }
+      if (ss) {
+        dt = tt - ssTs;
+        if (!(dt > 0)) dt += T * (Math.floor(-dt / T) + 1);
+        var s2 = 0;
+        for (q = 0; q < 2; q++) s2 += pl[q].r * ssh(pl[q].lam, k, dt, T);
+        sum += ssA * s2;
+      }
+      if (!isFinite(sum)) return fail();
+      res[i] = sum;
+    }
+    return { c: res, failed: false, method: 'closed' };
+  }
+
+  /* ---- ingestion: occasions, MMF only --------------------------------------------------------------------------------
+   * An occasion is a calendar day. A dose belongs to the day it is given on; a sample belongs to the day of the most recent dose BEFORE it (a
+   * pre-dose trough is the tail of the previous dose). Each sampled occasion gets its own κ on F; the C.MAX_OCC most recent ones. Everything
+   * else: κ = 0. */
+  function prepare(inp) {
+    var ex0 = normExtra(inp.extra, inp.wt);
+    var doses = (inp.doses || []).map(function (d) {
+      if (d.form != null && d.form !== 'mmf') throw new Error('This model covers mycophenolate mofetil (MMF) only. Enteric-coated mycophenolate sodium (EC-MPS) was not in the data and is not covered.');
+      return { t: d.t, amt: d.amt, route: d.route };
+    });
+    doses.sort(function (a, b) { return a.t - b.t; });
+    var days = {}, obs = [];
+    (inp.obs || []).forEach(function (o) {
+      var day = null;
+      for (var i = doses.length - 1; i >= 0; i--) { if (doses[i].t < o.t) { day = Math.floor(doses[i].t / 24); break; } }
+      if (day != null) days[day] = (days[day] || 0) + 1;
+      obs.push({ t: o.t, c: o.c, cDisp: o.c, hct: null });
+    });
+    var occDays = Object.keys(days).map(Number).sort(function (a, b) { return a - b; });
+    var nSampled = occDays.length;   // before the cap below
+    if (occDays.length > C.MAX_OCC) occDays = occDays.slice(occDays.length - C.MAX_OCC);
+    var idx = {};
+    occDays.forEach(function (dd, j) { idx[dd] = j; });
+    doses.forEach(function (d) {
+      var j = idx[Math.floor(d.t / 24)];
+      d.occIdx = j != null ? j : -1;
+      d.delta = !!(inp.steadyState && d.occIdx >= 0);
+    });
+    var ex = Object.assign({}, ex0, { nOcc: occDays.length, nSampled: nSampled, occDays: occDays });
+    return { extra: ex, doses: doses, obs: obs, assay: 'emit', hctReport: null };
+  }
+
+  /* The reported quantities live in the κ-free layout: steady state on the typical day. */
+  function reportExtra(ex) { return Object.assign({}, normExtra(ex), { nOcc: 0, occDays: [] }); }
+
+  /* Steady-state exposure per draw: the AUC over the interval is dose/CL exactly (typical day); the trough is the concentration one interval after
+   * the last dose. ctx = { wt, extra, ss:{amt,every,tEnd}, grid }. No blood correction exists for MPA: the "reference" results repeat the actual ones. */
+  function exposure(draws, ctx) {
+    var ex0 = reportExtra(ctx.extra), n = draws.length, tEnd = ctx.grid[ctx.grid.length - 1];
+    var auc = new Array(n), tr = new Array(n);
+    for (var d = 0; d < n; d++) {
+      var p = indivParams(ctx.wt, null, null, ex0, draws[d]);
+      var sim = simulate([], [tEnd], p, { ss: ctx.ss });
+      if (sim.failed) { auc[d] = tr[d] = NaN; continue; }
+      auc[d] = ctx.ss.amt / p.CL; tr[d] = sim.c[0];
+    }
+    return { aucA: auc, trA: tr, aucR: auc, trR: tr };
+  }
+
+  // plasma assay: model scale = reported scale, no blood transform
+  function identity(v) { return v; }
+
+  var SPEC = {
+    id: 'mpaped',
+    label: 'Mycophenolic acid (pediatric kidney)',
+    article: 'Heida A, Jager NGL, Aarnoutse RE, de Winter BCM, de Jong H, Keizer RJ, Cornelissen EAM, ter Heine R. Model-informed dose optimization of mycophenolic acid in pediatric kidney transplant patients. Eur J Clin Pharmacol 2024;80:1761–1771.',
+    backgroundLabel: 'Mycophenolic acid background',
+    card: { name: 'Mycophenolic acid (pediatric kidney)', sub: 'AUC₀–₁₂ₕ · Heida 2024' },
+    info: 'Two-compartment model with two equal absorption stages for mycophenolate mofetil (MMF) in children with a kidney transplant (30 children, 266 concentrations), scaled to weight, with an albumin effect on clearance and inter-occasion variability in bioavailability. Doses are MMF in mg, concentrations are mycophenolic acid in mg/L. Reported: steady-state AUC0–12h and trough. For research use only; not a medical device.',
+    pending: false,
+    report: {
+      lead: 'auc',
+      modelCite: 'Heida A, Jager NGL, Aarnoutse RE, et al. Model-informed dose optimization of mycophenolic acid in pediatric kidney transplant patients. Eur J Clin Pharmacol 2024;80:1761–1771. doi:10.1007/s00228-024-03743-0.',
+      scope: 'Children with a kidney transplant. Typical-day estimate from the samples. · mycophenolate mofetil · research use only',
+      windowSource: 'Bergan S, Brunet M, Hesselink DA, et al. Personalized therapy for mycophenolate: consensus report by IATDMCT. Ther Drug Monit 2021;43(2):150–197.',
+      noWindow: {},
+      reading: ['AUC₀–₁₂ₕ is the exposure over one 12-hour interval at steady state; other intervals are shown as their 12-hour equivalent.',
+        'The AUC is for a typical day on this regimen; a single day can differ by a factor of about 1.2 to 1.3 (one SD). In a small prospective evaluation (29 children), the AUC predicted from one occasion did not match the AUC measured about three months later.',
+        'The window 30 to 60 mg·h/L is the kidney-transplant range. The predicted trough is informational: the app has no trough target.']
+    },
+    // bloodCorrection false: plasma assay, no haematocrit, no corrected rows (read by ui.js and report.js)
+    ui: { noun: 'mycophenolic acid', reportNoun: 'mycophenolic acid (pediatric kidney)', doseNoun: 'MMF', wtPlaceholder: 'e.g. 38', weight: true, predDose: false, occasions: true, bloodCorrection: false, badge: 'Heida 2024 · MPA (children)', chartTitle: 'Mycophenolic acid plasma concentration–time forecast', shrinkEta: 'CL', modelLine: 'Heida 2024 (children with a kidney transplant, mycophenolate mofetil)' },
+    units: { conc: 'mg/L', auc: 'mg·h/L', dose: 'mg', concAlt: 'µg/mL' },
+
+    THETA: { CL: C.CL, V1: C.VC, V2: C.VP, Q: C.Q },
+    EXPO: { CLQ: 0.75, V: 1 },
+    WT_REF: 70,
+    requiresWt: true,
+    ETA: { shared: ['CL', 'VC', 'Q'], iiv: { CL: C.OM_CL, VC: C.OM_VC, Q: C.OM_Q } },
+    FORMS: null,
+    formDefault: null,
+    SIGMA: { ADD: 0, PROP: C.SIGMA_PROP },
+    KA_D: C.KTR,
+    BIOAVAIL_SC: 1,
+    INFUSION_D: 0.5,
+    adminRoutes: ['oral'],
+
+    covariates: [
+      { id: 'wt', name: 'Weight', type: 'number', required: true, units: 'kg', min: C.WT_MIN, max: C.WT_MAX, step: 'any',
+        help: 'Body weight in kg. Clearance and the transfer rates scale with weight, volumes in proportion. The model was built on children of 12.9–79.9 kg.' },
+      { id: 'albumin', name: 'Albumin', type: 'number', required: true, units: 'g/L', min: C.ALB_MIN, max: C.ALB_MAX, step: 'any', placeholder: 'e.g. 34',
+        help: 'Serum albumin in g/L (34, not 3.4 g/dL). Low albumin raises clearance steeply in this model (clearance ∝ albumin to the power −2.49). The model was built on 24–42 g/L.' }
+    ],
+    covariateWeight: true, covariateAge: false, covariateRenal: false, covariateExtra: false,
+
+    dose: { min: 50, max: 3000, step: 'any', default: 600 },   // mg of MMF per administration
+    wtMin: C.WT_MIN, wtMax: C.WT_MAX, wtStep: 0.1,
+    scope: { wt: C.WT_DATA, albumin: C.ALB_DATA },
+    ssIntervalDefault: 12,
+    ssNDoses: 30,
+    intervalRange: { min: 10, max: 14, text: 'twice-daily mycophenolate mofetil (about 12 h between doses)' },
+    obsValMin: 0.01, obsValMax: 200,
+    windowRange: { min: 0.1, max: 500 },
+    windowDefaultLo: 30, windowDefaultHi: 60,
+    troughDefaultLo: null, troughDefaultHi: null,
+    windowStandard: 'kidney-ped',
+    windowSets: [
+      { id: 'kidney-ped', label: 'Kidney transplant, AUC0–12h', trough: null, auc: [30, 60], grade: 'Consensus, grade B, II',
+        basis: 'IATDMCT consensus (Bergan 2021), kidney transplantation. For nephrotic syndrome Heida 2026 lists above 50 mg·h/L (a lower bound only); see the Background before using it.' }
+    ],
+    windowHint: 'See “Mycophenolic acid background” for reference values. The window starts at the kidney-transplant range 30–60 mg·h/L.',
+    samplePeak: 'In the model authors’ evaluation, samples at 0, 1 and 2 hours after the dose gave AUC estimates within their 25% limit. Enter the exact times of dose and samples.',
+    perChainSeeds: true,
+    mcmcScale: function (dim) { return Math.min(1, 2.38 / Math.sqrt(dim)); },
+    mcmcIters: function (dim) { return dim <= 7 ? 800000 : (dim <= 15 ? 1600000 : 3200000); },
+    yMaxCap: null,
+    assay: 'EMIT (the assay of the development data)',
+    assumptions: [
+      'Children with a kidney transplant on mycophenolate mofetil (CellCept) together with tacrolimus or everolimus. Built on children aged 4–18 years, weight 12.9–79.9 kg and albumin 24–42 g/L, with a median of 9.5 days after transplantation. Not for ciclosporin co-medication, for EC-MPS or for other indications',
+      'Doses are mg of MMF and concentrations mg/L of mycophenolic acid; the model absorbs the conversion, so none is applied',
+      'Concentrations should come from the assay the model was built on (EMIT). An immunoassay overestimates against LC-MS because of the acyl glucuronide metabolite; there is no assay field and no conversion',
+      'Reported values are the patient’s steady state on a typical day (occasion effects at zero). They are estimated from the samples; the AUC of a single day scatters around them',
+      'Occasion = calendar day. Each sampled day (up to the 10 most recent) gets its own effect on bioavailability, one shared variance (0.19); days without a sample are taken at zero',
+      'The variability of the central volume (variance 2.42) is large and poorly identified; the AUC does not depend on it, concentrations early after a dose do',
+      'No enterohepatic recirculation compartment (the authors note that secondary peaks may be fitted poorly). Nephrotic syndrome was not in the data',
+      'Estimated with NONMEM FOCE-I'
+    ],
+    custom: null
+  };
+
+  SPEC.custom = {
+    constants: C, assays: { emit: { label: 'EMIT', m: 1, b: 0 } },
+    etaNames: etaNames, omega: omega,
+    indivParams: indivParams, simulate: simulate, poles: poles, hconv: hconv, ssh: ssh,
+    prepare: prepare, exposure: exposure, reportExtra: reportExtra, normExtra: normExtra, scopeWarnings: scopeWarnings,
+    toObs: identity, fromModel: identity, fromModelAuc: identity, toModel: identity,
+    doseToEngine: function (mg) { return mg; }
+  };
+
+  M.drugs.mpaped = SPEC;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -3320,13 +4023,13 @@ html { scroll-behavior: smooth; }
     // (UI "Steady state" mode). The exact periodic solution replaces the finite
     // history in every simulation; `doses` still drives the anchor and the report.
     var ssSpec = input.steadyState
-      ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: doses[doses.length - 1].route || 'oral', pred: doses[doses.length - 1].pred }
+      ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: doses[doses.length - 1].route || 'oral', pred: doses[doses.length - 1].pred, form: doses[doses.length - 1].form }
       : null;
     // Tacrolimus: the doses of sampled occasions stay explicit (their κ shifts the train); the rest is the exact train.
     var simDoses = ssSpec ? (custom ? doses.filter(function (d) { return d.delta; }) : []) : doses;
     // What the numbers refer to: for tacrolimus always the steady state of the LAST regimen on a typical day,
     // also when a finite history was entered (the history informs the fit, not the reported value).
-    var repSS = custom ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: 'oral', pred: doses[doses.length - 1].pred } : null;
+    var repSS = custom ? { amt: doses[doses.length - 1].amt, every: intervalHours, tEnd: lastDoseT, route: 'oral', pred: doses[doses.length - 1].pred, form: doses[doses.length - 1].form } : null;
     // F3: an entered history shorter than 5 terminal half-lives (typical patient) is not steady state.
     var historySpanH = lastDoseT - doses[0].t;
     var historyNeedH = 5 * M.terminalHalfLife(M.indivParams(wt, age, renal, extra, zeros(dim), drug, form || null, 0));
@@ -3678,7 +4381,7 @@ html { scroll-behavior: smooth; }
       var assayS = opts.assay || exT.assay || 'lcms';
       var outT = [], amountsT = opts.amounts || [];
       for (var ia = 0; ia < amountsT.length; ia++) {
-        var exo = cu.exposure(sub0, { wt: opts.wt, extra: exT, ss: { amt: amountsT[ia], every: intervalHours, tEnd: tEnd, pred: opts.pred != null ? opts.pred : exT.pred },
+        var exo = cu.exposure(sub0, { wt: opts.wt, extra: exT, ss: { amt: amountsT[ia], every: intervalHours, tEnd: tEnd, pred: opts.pred != null ? opts.pred : exT.pred, form: form },
           grid: gridT, hctAct: hctS, hctRef: cu.constants.HCT_REF });
         var fa2 = function (a) { return isFinite(a) ? cu.fromModelAuc(a, intervalHours, assayS) : NaN; };
         var fc2 = function (v) { return isFinite(v) ? cu.fromModel(v, assayS) : NaN; };
@@ -3852,7 +4555,7 @@ html { scroll-behavior: smooth; }
     '})();'
   ].join('\n');
 
-  var SOURCES = ['src/version.js', 'src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/bayes.js'];
+  var SOURCES = ['src/version.js', 'src/model.js', 'src/tacrolimus.js', 'src/everolimus.js', 'src/tacped.js', 'src/mpaped.js', 'src/bayes.js'];
 
   /* The built page carries each module as an inline <script> that starts with a marker comment (build.mjs). */
   function inlinedSources() {
@@ -4357,10 +5060,12 @@ html { scroll-behavior: smooth; }
   function summaryHintTac(fit) {
     var u = unitsOfFit(fit), parts = [];
     var a = fit.auc, t = fit.trough;
-    parts.push('Steady-state AUC0–12h ' + fmtC(a.median) + ' ' + u.auc + ' (5–95% ' + fmtC(a.p5) + ' to ' + fmtC(a.p95) + '); corrected to haematocrit ' + fit.hctRef + ': ' + fmtC(fit.aucCorr.median) + ' (' + fmtC(fit.aucCorr.p5) + ' to ' + fmtC(fit.aucCorr.p95) + ').');
-    parts.push('Steady-state trough ' + fmtC(t.median) + ' ' + u.conc + ' (5–95% ' + fmtC(t.p5) + ' to ' + fmtC(t.p95) + '); corrected: ' + fmtC(fit.troughCorr.median) + ' (' + fmtC(fit.troughCorr.p5) + ' to ' + fmtC(fit.troughCorr.p95) + ').');
-    if (fit.windowSet && isFinite(a.pInWindow)) parts.push('Probability of the AUC within its window: ' + Math.round(a.pInWindow * 100) + '%.');
-    if (fit.troughWin && fit.troughWin.set && isFinite(t.pInWindow)) parts.push('Probability of the trough within its window: ' + Math.round(t.pInWindow * 100) + '%.');
+    var blood = fit.hctRef != null;   // a drug with a plasma assay (pediatric MPA) has no corrected value
+    parts.push('Steady-state AUC0–12h ' + fmtC(a.median) + ' ' + u.auc + ' (5–95% ' + fmtC(a.p5) + ' to ' + fmtC(a.p95) + ')' + (blood ? '; corrected to haematocrit ' + fit.hctRef + ': ' + fmtC(fit.aucCorr.median) + ' (' + fmtC(fit.aucCorr.p5) + ' to ' + fmtC(fit.aucCorr.p95) + ')' : '') + '.');
+    parts.push('Steady-state trough ' + fmtC(t.median) + ' ' + u.conc + ' (5–95% ' + fmtC(t.p5) + ' to ' + fmtC(t.p95) + ')' + (blood ? '; corrected: ' + fmtC(fit.troughCorr.median) + ' (' + fmtC(fit.troughCorr.p5) + ' to ' + fmtC(fit.troughCorr.p95) + ')' : '') + '.');
+    var onCorr = blood && root.ECU.model.spec(fit.drug).ui && root.ECU.model.spec(fit.drug).ui.windowOn === 'corrected', aw = onCorr ? fit.aucCorr : a, tw = onCorr ? fit.troughCorr : t;   // pediatric tacrolimus: the window is defined for the corrected value
+    if (fit.windowSet && isFinite(aw.pInWindow)) parts.push('Probability of the ' + (onCorr ? 'corrected ' : '') + 'AUC within its window: ' + Math.round(aw.pInWindow * 100) + '%.');
+    if (fit.troughWin && fit.troughWin.set && isFinite(tw.pInWindow)) parts.push('Probability of the ' + (onCorr ? 'corrected ' : '') + 'trough within its window: ' + Math.round(tw.pInWindow * 100) + '%.');
     if (!fit.hasObs) parts.push('No measurements entered: this is the population forecast for the covariates given.');
     if (fit.acceptance != null && isFinite(fit.acceptance)) parts.push('MCMC acceptance ' + (fit.acceptance * 100).toFixed(0) + '%.');
     return parts.join(' ');
@@ -4885,6 +5590,322 @@ html { scroll-behavior: smooth; }
 
 </script>
 <script>
+/* src/texts_tacped.js (inlined) */
+/* =========================================================================
+ * NephroTDM: pediatric tacrolimus texts (background, getting started, About, results, report)
+ *
+ * Registered as ECU.drugTexts.tacped; ui.js and diagnostics.js ask the registry, no shared string names a drug.
+ * Rules for this file (README rule 6, docs/HANDOFF_PEDIATRIC.md section 10):
+ *  - no sentence reads as a dose or interval recommendation (the starting-dose table of the MPA paper and any dose advice of the
+ *    2026 paper are not used);
+ *  - every number traces to Heida 2026 (Tables 2, 4, 5, 7 and ESM S1), Schijvens 2019 and 2020, or is computed from the model;
+ *  - no sentence says that a corrected value or a target is "not validated"; claims are no stronger than the evidence;
+ *  - the estimate describes the sampled day, and the text says so;
+ *  - no em-dashes.
+ * Status: first draft by the coder; clinical pharmacologist and owner review (gate G6) still to come.
+ * ========================================================================= */
+(function (root) {
+  'use strict';
+  var ECU = root.ECU = root.ECU || {};
+  ECU.drugTexts = ECU.drugTexts || {};
+
+  function spec() { return ECU.model.spec('tacped'); }
+  function ref() { return spec().custom.constants.HCT_REF; }
+
+  var SCOPE = 'Children with a kidney transplant on twice-daily tacrolimus as capsule or suspension. Built on children aged 1–17 years, weight 9–78 kg, sampled at a median of 11 days after transplantation; LC-MS/MS whole-blood concentrations only; haematocrit needed.';
+  var SAMPLED_DAY = 'The estimate describes this patient on the day of the samples. Exposure changes from day to day and over months. In a small prospective evaluation (29 children enrolled), the AUC predicted from one occasion did not match the AUC measured about three months later. The authors conclude that repeated monitoring is needed.';
+
+  function winLine(w) {
+    return (w.trough ? 'Trough <b>' + w.trough[0] + '–' + w.trough[1] + '</b> µg/L' : 'AUC<sub>0–12h</sub> <b>' + w.auc[0] + '–' + w.auc[1] + '</b> µg·h/L');
+  }
+
+  function windowTable() {
+    var sp = spec(), out = '';
+    sp.windowSets.forEach(function (w) {
+      out += '<div class="winset">' +
+        '<div class="winset-head"><b>' + w.label + '</b></div>' +
+        '<div class="winset-nums">' + winLine(w) + '</div>' +
+        '<div class="src">' + w.basis + '</div>' +
+        '<button type="button" class="secondary" data-winset="' + w.id + '" title="Put this window in card 1">Use this window</button></div>';
+    });
+    return out;
+  }
+
+  function background() {
+    var H = ref();
+    return '<p>' + SCOPE + ' Tacrolimus exposure differs a lot between children and changes with weight, haematocrit and formulation. The model-based <b>AUC<sub>0–12h</sub></b> and trough are estimated from the samples you enter, with an interval, as measured (actual whole blood) and corrected to a haematocrit of ' + H + '.</p>' +
+      '<h3>Windows</h3>' +
+      '<p>No window is preselected: the AUC target depends on the time since transplantation, which the app does not ask for. Pick the set that fits the patient, type your own bounds in card 1, or clear the window to get intervals without probabilities. The probabilities are only as meaningful as the window you set.</p>' +
+      windowTable() +
+      '<p>The AUC sets are the local guideline and Wallemacq 2009, as used in Heida 2026 (Table 2). The trough sets are the consensus values for children as cited in Heida 2026. The AUC sets change at 6 weeks and the trough sets at 2 months; they come from different sources and do not line up. The targets are whole-blood values. Following Heida 2026 and Schijvens 2019, they are taken to refer to a haematocrit of ' + H + ', so <b>the corrected value is the one to compare with them</b>; the actual value is shown beside it.</p>' +
+      '<h3>Haematocrit and the corrected value</h3>' +
+      '<p>Tacrolimus binds to red cells, and the binding saturates. At the same plasma concentration, whole blood reads higher the higher the haematocrit, and children soon after a transplant often have a low one (in a cohort of 36 children sampled at a median of 12 days after transplantation, 92% were below ' + H + '). The app reports the <b>actual</b> whole-blood value and the value <b>corrected to a haematocrit of ' + H + '</b>: the concentration this patient would show, for the same plasma concentration, at ' + H + ', computed with the red-cell binding relation of the model.</p>' +
+      '<p>The red-cell binding constants (Bmax 418 µg/L, Kd 3.8 µg/L) come from a study in adult liver transplant recipients, as used by Schijvens 2019, who note that they should ideally be determined in children.</p>' +
+      '<p>Illustration of the correction, not a dose guide: for a typical 25 kg child on 3 mg of capsule twice daily, the model gives an AUC of 194 µg·h/L at a haematocrit of 0.30 and 257 µg·h/L at 0.40. Corrected to ' + H + ', both read about 225 µg·h/L. Without the correction the same exposure sits in a different place relative to a window.</p>' +
+      '<h3>Capsule and suspension</h3>' +
+      '<p>The formulation is chosen per dose. In the model the suspension is absorbed faster (rate 18 against 2.83 per hour) and has 0.46 times the bioavailability of the capsule. Another product or preparation than the one in the model’s development data may behave differently. A switch is entered on the dose row where it happened; for a stable regimen choose the formulation of the regimen.</p>' +
+      '<h3>Assay</h3>' +
+      '<p>Concentrations must come from an LC-MS/MS assay in whole blood (the assay of the model’s development data). Results from other assays cannot be used and have no conversion.</p>' +
+      '<h3>Sampling</h3>' +
+      '<table class="data about-tbl"><thead><tr><th>Samples</th><th>What the authors’ evaluation showed</th></tr></thead><tbody>' +
+      '<tr><td>0, 1 and 2 hours after the dose</td><td>Within the authors’ limit of 25% for bias and imprecision: mean prediction error 0.2%, normalised root mean squared error (a typical individual error) 7.8%.</td></tr>' +
+      '<tr><td>Trough only</td><td>Less accurate, still inside the limit: 3.7% and 22.0%.</td></tr>' +
+      '</tbody></table>' +
+      '<p>The reference was the AUC from the full profile estimated with the same model, in the children the model was built on (23 profiles).</p>' +
+      '<p>Enter the exact times of dose and sample and the haematocrit of the same day. Results below the limit of quantification cannot be used: leave them out.</p>' +
+      '<h3>What the estimate means</h3>' +
+      '<p>' + SAMPLED_DAY + '</p>' +
+      '<p class="src">Schijvens AM, de Wildt SN, Cornelissen EAM, et al. Low bioavailability of oral tacrolimus suspension in pediatric kidney transplant recipients. <i>Clin Pharmacokinet</i> 2020;59:1483–1491.</p>' +
+      '<p class="src">Heida A, Cornelissen EAM, Aarnoutse RE, et al. Structured evaluation of model-informed precision dosing of mycophenolic acid and tacrolimus in pediatric patients with kidney disease. <i>Clin Pharmacokinet</i> 2026. doi:10.1007/s40262-026-01708-3.</p>' +
+      '<p class="src">Schijvens AM, et al. The potential impact of hematocrit correction on evaluation of tacrolimus target exposure in pediatric kidney transplant patients. <i>Pediatr Nephrol</i> 2019;34:507–515.</p>';
+  }
+
+  function gettingStarted() {
+    var H = ref();
+    return '<p>For one child with a kidney transplant on twice-daily tacrolimus, this tool estimates the <b>steady-state AUC<sub>0–12h</sub> and trough</b> with 5–95% intervals, from the covariates and the concentrations you enter. Both are shown as measured (actual whole blood) and corrected to a haematocrit of ' + H + '. Nothing you type leaves this device. Work through the cards in order.</p>' +
+      '<ol class="gs-steps">' +
+      '<li><b>Patient &amp; covariates.</b> Choose tacrolimus (pediatric kidney). Enter the weight in kg and the haematocrit in L/L (0.30, not 30). Concentrations must come from an LC-MS/MS assay. No window is preselected; pick one in the background dialog, or leave it empty.</li>' +
+      '<li><b>Dosing schedule &amp; measured concentrations.</b> Choose <b>Full schedule</b> to enter the actual doses, or <b>Steady state</b> for a stable regimen (dose, interval, time of the latest dose). Doses are in mg of tacrolimus per administration, and each dose has its formulation, capsule or suspension. Add the samples with their exact times and haematocrit. A sample is optional: without one you get the model’s typical child for these covariates, with a wide interval.</li>' +
+      '<li><b>Estimate.</b> Press <b>Run forecast</b> (the button has this name for every drug). You get the steady-state AUC<sub>0–12h</sub> and trough of the current regimen, each with a 5–95% interval, as measured and corrected. With a window set, you also get the probability that the exposure lies inside, above or below it. These are estimates for the day of the samples, not predictions of later exposure and not recommendations.</li>' +
+      '<li><b>Dose explorer</b> (optional). After a forecast, this card shows the exposure the model gives for a different dose, at the same 12-hour interval, at steady state, using the fit you already have. It assumes the state of the sampled day continues and says nothing about later days. It does not select or recommend a dose.</li>' +
+      '</ol>' +
+      '<p><b>When you are done:</b> <b>Print report</b> builds a one-page summary and <b>Export session</b> saves the case as a file. If you close the tab by accident, reopening the app offers to restore your work.</p>' +
+      '<p class="src">The windows and sampling are explained in the background dialog. The model and its limits are in <b>About</b>.</p>';
+  }
+
+  function aboutSections() {
+    return '<h3>What this app estimates for tacrolimus in children</h3>' +
+      '<p>' + SCOPE + ' The steady-state whole-blood AUC<sub>0–12h</sub> and trough of the current regimen, each as a median with a 5–95% interval, as measured (actual) and corrected to a haematocrit of ' + ref() + '. If you set windows, you also get the probability of lying inside, above or below each.</p>' +
+      '<h3>How well did the model do</h3>' +
+      '<p>The model authors evaluated this model in children with kidney disease (Heida 2026). With samples at 0, 1 and 2 hours after the dose, the AUC of the same day was estimated with a mean prediction error of 0.2% and a normalised root mean squared error of 7.8%; with a trough only, 3.7% and 22.0%. Both are within the authors’ limit of 25%. The reference was the AUC from the full profile estimated with the same model, in the children the model was built on.</p>' +
+      '<p>Predicting the AUC at the next occasion, about three months later, did not work: the mean prediction error was 64.2% and the normalised root mean squared error 210%, both above the authors’ limit of 25%. The authors attribute this to substantial between-occasion variability. <b>' + SAMPLED_DAY + '</b> The intervals in this app describe the uncertainty about the patient on the sampled day; they do not include day-to-day variability, which this model does not have.</p>' +
+      '<h3>What it does not cover</h3>' +
+      '<ul class="about-list">' +
+      '<li>Adults, prolonged-release products and other organs.</li>' +
+      '<li>Children outside weight 9–78 kg (a warning is shown) and outside 3–200 kg (refused).</li>' +
+      '<li>Height and age. The model was refitted without height; weight and haematocrit are its only covariates.</li>' +
+      '<li>Interactions with CYP3A inhibitors and inducers, CYP3A5 genotype, liver function, food, adherence and the time since transplantation. None of these is in the model.</li>' +
+      '<li>Immunoassay results. Only LC-MS/MS values can be used.</li>' +
+      '<li>Results below the limit of quantification. A result reported as “&lt; LLOQ” cannot be used, so omit it.</li>' +
+      '</ul>' + referenceSections();
+  }
+
+  function referenceSections() {
+    var sp = spec(), H = ref(), rows = '';
+    sp.windowSets.forEach(function (w) {
+      rows += '<tr><td>' + w.label + '</td><td>' + (w.trough ? w.trough[0] + '–' + w.trough[1] : 'none given') + '</td><td>' + (w.auc ? w.auc[0] + '–' + w.auc[1] : 'none given') + '</td><td>' + w.grade + '</td></tr>';
+    });
+    return '<h3>Reference values for tacrolimus (children with a kidney transplant, twice-daily)</h3>' +
+      '<p>As used in Heida 2026 (Table 2). The windows are starting points that you can change or clear; the Tacrolimus background dialog has the same sets with a “Use this window” button each. The targets are taken to refer to whole blood at a haematocrit of ' + H + '. µg/L is the same as ng/mL.</p>' +
+      '<div class="winmatrix-wrap"><table class="data about-tbl"><thead><tr><th>Setting</th><th>Trough (µg/L)</th><th>AUC<sub>0–12h</sub> (µg·h/L)</th><th>Source</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<h3>Why model-based estimation</h3>' +
+      '<p>A model-based estimate works with the sample times you actually have, takes the haematocrit and the formulation into account, and gives the trough and the AUC with an interval from one fit.</p>' +
+      '<p class="src">Heida A, et al. <i>Clin Pharmacokinet</i> 2026, doi:10.1007/s40262-026-01708-3. Schijvens AM, et al. <i>Clin Pharmacokinet</i> 2020;59:1483–1491.</p>';
+  }
+
+  function modelTable(sp) {
+    var C = sp.custom.constants;
+    var cv = function (v) { return v + ' (CV ' + (Math.sqrt(Math.exp(v) - 1) * 100).toFixed(1) + '%)'; };
+    var rows = [
+      ['Absorption rate KA (per hour)', C.KA_CAP + ' capsule, ' + C.KA_SUS + ' suspension (three equal stages)', cv(C.OM_KA)],
+      ['Relative bioavailability of the suspension', C.F_SUS + ' (capsule = 1)', '–'],
+      ['CLint (L/h at 70 kg)', C.CLINT, cv(C.OM_CLINT)],
+      ['V3, central plasma volume (L at 70 kg)', C.V3, cv(C.OM_V3)],
+      ['Q (L/h at 70 kg) and V4 (L at 70 kg)', C.Q + ' and ' + C.V4, '–'],
+      ['Hepatic blood flow (L/h at 70 kg), liver volume (L)', C.QH + ' (plasma flow × (1 − haematocrit)), 0.0437 × weight^0.9', '–'],
+      ['Weight scaling', 'clearances and Q × (weight/70)^0.75, volumes × (weight/70)', '–'],
+      ['Red-cell binding', 'Bmax ' + C.BMAX + ' µg/L erythrocytes, Kd ' + C.KD + ' µg/L plasma', '–'],
+      ['Residual error (proportional)', 'variance ' + C.SIGMA_PROP, '–']
+    ];
+    var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+    return '<table class="about-tbl"><thead><tr><th>Parameter</th><th>Typical value</th><th>IIV (variance)</th></tr></thead><tbody>' +
+      rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td></tr>'; }).join('') + '</tbody></table>';
+  }
+
+  var HELP = {
+    wt: 'Body weight in kg. Clearances scale to weight to the power 0.75, volumes in proportion, and the liver volume to weight to the power 0.9. The model was built on children of 9–78 kg; outside that range a warning is shown.',
+    window: 'Lower and upper bound of an AUC0–12h window (µg·h/L). No window is preselected for children: the target depends on the time since transplantation. The sets are in “Tacrolimus background”. The targets are taken to refer to whole blood at haematocrit 0.35, so the corrected value is the one to compare. Leave a window empty and that exposure is shown with its interval but without probabilities.',
+    ivexplore: 'Show the exposure the model gives for a dose you enter, at steady state, every 12 h, using this patient’s fitted posterior: the AUC0–12h and trough, actual and corrected to haematocrit 0.35, with the probabilities against your windows if you set them. It is a what-if for the day of the samples; exposure three months later could not be predicted in the authors’ evaluation. Whole-blood exposure is slightly less than proportional to the dose.'
+  };
+
+  ECU.drugTexts.tacped = {
+    background: background, gettingStarted: gettingStarted, aboutSections: aboutSections, modelTable: modelTable,
+    modelNote: 'Disposition parameters refer to plasma concentrations and scale to weight. Whole-blood concentrations follow from the haematocrit through the red-cell binding relation. Refitted without height (Heida 2026); estimated with NONMEM FOCE-I.',
+    doseNote: 'Twice-daily tacrolimus in children with a kidney transplant, capsule or suspension, chosen per dose. Prolonged-release products and adults are not covered by this model.',
+    chartNote: 'Individual = this patient’s measured levels · red points = measurements. The curve is whole blood at the haematocrit of the latest sample, on the current regimen; the reported steady-state values are for the regimen at steady state. The windows are shown in the results grid, not on this plot. Time axis in hours after the last dose.',
+    howto: '<li><b>Steady-state AUC₀–12h and trough:</b> the model’s estimate for the current regimen, with a 5–95% interval. The interval covers the uncertainty in this patient’s parameters on the sampled day; a later measurement scatters more than that.</li>' +
+      '<li><b>Corrected to haematocrit 0.35:</b> the whole-blood value this patient would show, for the same plasma concentration, at a haematocrit of 0.35. It removes the effect of a low or high haematocrit on the reading.</li>' +
+      '<li><b>Probability in window:</b> shown only if you set a window; the chance that the exposure lies between your lower and upper bound.</li>' +
+      '<li><b>Band (5–95%):</b> 90% plausible range for the true concentration curve. It does not include assay error, so a future measured value may fall outside it.</li>',
+    help: HELP,
+    shrinkNote: '<p class="legend-note"><b>Note:</b> the samples barely moved this patient’s clearance estimate, so the interval largely reflects population variability. Samples at 0, 1 and 2 hours after the dose add information.</p>',
+    resultNote: function (fit, h) {
+      return '<div class="legend-note">Steady-state values for the current regimen, at the haematocrit of the latest sample (' + h.esc(h.fmtC(fit.hctReport)) +
+        ' L/L). ' + SAMPLED_DAY + ' The corrected lines refer to haematocrit ' + h.esc(fit.hctRef) + '.</div>';
+    },
+    explorerSub: function (last, fit, h) {
+      return 'every 12 h, at steady state, ' + (last && last.form === 'suspension' ? 'suspension' : 'capsule');
+    },
+    explorerNote: 'This is a what-if for the day of the samples: the exposure the model gives for the dose you enter, at steady state. In the authors’ evaluation, exposure three months later could not be predicted. Whole-blood concentrations rise a little less than in proportion to the dose because binding to red cells saturates. It does not select or recommend a dose.',
+    reportPatient: function (c) {
+      var ex = c.ex;
+      return '<h2>Patient</h2><table class="data">' +
+        '<tr><th>ID</th><td>' + c.esc(c.pid) + '</td><th>Haematocrit (patient card)</th><td>' + c.esc(ex.hct || '–') + ' L/L</td></tr>' +
+        '<tr><th>Weight</th><td>' + c.esc(c.wt || ex.wt || '–') + ' kg</td><th>Assay</th><td>LC-MS/MS</td></tr></table>';
+    },
+    reportNote: function (fit, h) {
+      return 'Steady state of the current regimen, at the haematocrit of the latest sample (' + h.esc(h.fmtC(fit.hctReport)) + ' L/L). ' + SAMPLED_DAY + ' The corrected values refer to haematocrit ' + h.esc(fit.hctRef) + '.';
+    },
+    diagNote: 'The volume (V3) is expected to be poorly informed by troughs; the AUC depends on clearance, not on the volume.'
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* src/texts_mpaped.js (inlined) */
+/* =========================================================================
+ * NephroTDM: pediatric mycophenolic acid texts (background, getting started, About, results, report)
+ *
+ * Registered as ECU.drugTexts.mpaped; ui.js and diagnostics.js ask the registry, no shared string names a drug.
+ * Rules for this file (README rule 6, docs/HANDOFF_PEDIATRIC.md section 10):
+ *  - no sentence reads as a dose or interval recommendation (the improved starting-dose table of Heida 2024, Table 3, is not used);
+ *  - every number traces to Heida 2024 (Table 2), Heida 2026 (Tables 2, 4, 5 and 7), the IATDMCT consensus (Bergan 2021), or is computed from the model;
+ *  - the estimate describes the sampled day, and the text says so;
+ *  - no em-dashes.
+ * Status: first draft by the coder; clinical pharmacologist and owner review (gate G6) still to come.
+ * ========================================================================= */
+(function (root) {
+  'use strict';
+  var ECU = root.ECU = root.ECU || {};
+  ECU.drugTexts = ECU.drugTexts || {};
+
+  function spec() { return ECU.model.spec('mpaped'); }
+
+  var SCOPE = 'Children with a kidney transplant on mycophenolate mofetil (CellCept) together with tacrolimus or everolimus. Not for ciclosporin co-medication, for EC-MPS or for other indications. Built on children aged 4–18 years, weight 13–80 kg and albumin 24–42 g/L, with a median of 9.5 days after transplantation. Enter the MMF dose as mg of MMF.';
+  var SAMPLED_DAY = 'The reported AUC is for a typical day on this regimen, estimated from the samples. The AUC of a single day can differ from it by a factor of about 1.2 to 1.3 (one standard deviation). Exposure changes from day to day and over months. In a small prospective evaluation (29 children enrolled), the AUC predicted from one occasion did not match the AUC measured about three months later. The authors conclude that repeated monitoring is needed.';
+
+  function background() {
+    return '<p>' + SCOPE + ' Mycophenolic acid (MPA) exposure differs a lot between children and changes with weight and with serum albumin. The model-based <b>AUC<sub>0–12h</sub></b> is estimated from the samples you enter, with an interval; the trough is shown for information.</p>' +
+      '<h3>Reference values</h3>' +
+      '<div class="winset std"><div class="winset-head"><b>Kidney transplantation, AUC<sub>0–12h</sub></b> <span class="badge info">standard</span></div>' +
+      '<div class="winset-nums">AUC<sub>0–12h</sub> <b>30–60</b> mg·h/L</div>' +
+      '<div class="src">' + spec().windowSets[0].basis + '</div>' +
+      '<button type="button" class="secondary" data-winset="kidney-ped" title="Put this window in card 1">Use this window</button></div>' +
+      '<p>The app starts with this window; change either bound in card 1 or clear it. For nephrotic syndrome, Heida 2026 (Table 2) lists an AUC above 50 mg·h/L. The model was built on children with a kidney transplant, not with nephrotic syndrome, and these children usually have a low albumin (the model was built on 24 to 42 g/L), where the estimate is least reliable. The app takes a lower and an upper bound: type 50 as the lower bound and read the chance of exceeding it from “Above the lower bound”; the upper bound can be any value. The probabilities are only as meaningful as the window you set. The app has no trough target; the predicted trough is informational.</p>' +
+      '<h3>Albumin</h3>' +
+      '<p>In this model clearance rises steeply when albumin is low (clearance is proportional to albumin to the power −2.49, around 34 g/L). Illustration of the albumin effect, not a dose guide: for a typical 38.5 kg child on 600 mg of MMF twice daily, the model gives an AUC of 59 mg·h/L at albumin 34 g/L and 36 mg·h/L at 28 g/L. Enter the albumin in g/L (34, not 3.4 g/dL). Outside 24–42 g/L, the range of the development data, the estimate is less reliable and a warning is shown.</p>' +
+      '<h3>Dose and concentration units</h3>' +
+      '<p>Doses are mg of mycophenolate mofetil (MMF) per administration and concentrations are mg/L of mycophenolic acid. The model already contains the conversion from MMF to MPA, so the app applies none. Enteric-coated mycophenolate sodium (EC-MPS) was not in the data and is not covered.</p>' +
+      '<h3>Assay</h3>' +
+      '<p>The model was built on concentrations measured with an EMIT immunoassay (Cobas) in plasma. Use the same assay. EMIT reads higher than chromatographic methods because it also detects the acyl glucuronide metabolite, so an AUC on the EMIT scale is not directly comparable with an AUC measured by LC-MS/MS. The app has no assay field and no conversion.</p>' +
+      '<h3>Sampling</h3>' +
+      '<table class="data about-tbl"><thead><tr><th>Samples</th><th>What the authors’ evaluation showed</th></tr></thead><tbody>' +
+      '<tr><td>0, 1 and 2 hours after the dose</td><td>Within the authors’ limit of 25% for bias and imprecision: mean prediction error 0.1%, normalised root mean squared error (a typical individual error) 21.0%; 84% of the estimates were within 30% of the reference.</td></tr>' +
+      '<tr><td>Trough only</td><td>Less accurate and above the limit: 6.6% and 32.5%.</td></tr>' +
+      '</tbody></table>' +
+      '<p>The reference was the AUC from the full profile estimated with the same model, in the same children the model was built on (20 profiles).</p>' +
+      '<p>Enter the exact times of dose and samples. Results below the limit of quantification cannot be used: leave them out.</p>' +
+      '<h3>What the estimate means</h3>' +
+      '<p>' + SAMPLED_DAY + ' Each day with a sample gets its own bioavailability effect in the model, so samples from different days are not forced to agree.</p>' +
+      '<p class="src">Heida A, Jager NGL, Aarnoutse RE, et al. Model-informed dose optimization of mycophenolic acid in pediatric kidney transplant patients. <i>Eur J Clin Pharmacol</i> 2024;80:1761–1771. doi:10.1007/s00228-024-03743-0.</p>' +
+      '<p class="src">Heida A, Cornelissen EAM, Aarnoutse RE, et al. Structured evaluation of model-informed precision dosing of mycophenolic acid and tacrolimus in pediatric patients with kidney disease. <i>Clin Pharmacokinet</i> 2026. doi:10.1007/s40262-026-01708-3.</p>' +
+      '<p class="src">Bergan S, Brunet M, Hesselink DA, et al. Personalized therapy for mycophenolate: consensus report by the International Association of Therapeutic Drug Monitoring and Clinical Toxicology. <i>Ther Drug Monit</i> 2021;43(2):150–197.</p>';
+  }
+
+  function gettingStarted() {
+    return '<p>For one child with a kidney transplant on twice-daily mycophenolate mofetil, this tool estimates the <b>steady-state AUC<sub>0–12h</sub></b> with a 5–95% interval, from the covariates and the concentrations you enter, and shows the trough for information. Nothing you type leaves this device. Work through the cards in order.</p>' +
+      '<ol class="gs-steps">' +
+      '<li><b>Patient &amp; covariates.</b> Choose mycophenolic acid (pediatric kidney). Enter the weight in kg and the serum albumin in g/L (34, not 3.4). The AUC window starts at 30–60 mg·h/L, the kidney-transplant range.</li>' +
+      '<li><b>Dosing schedule &amp; measured concentrations.</b> Choose <b>Full schedule</b> to enter the actual doses, or <b>Steady state</b> for a stable regimen (dose, interval, time of the latest dose). Doses are in mg of MMF per administration. Add the samples with their exact times. A sample is optional: without one you get the model’s typical child for these covariates, with a wide interval.</li>' +
+      '<li><b>Estimate.</b> Press <b>Run forecast</b> (the button has this name for every drug). You get the steady-state AUC<sub>0–12h</sub> of the current regimen with a 5–95% interval and, against the window, the probability that it lies inside, above or below. These are estimates from the samples of one occasion, not predictions of later exposure and not recommendations.</li>' +
+      '<li><b>Dose explorer</b> (optional). After a forecast, this card shows the exposure the model gives for a different dose, at the same 12-hour interval, at steady state, using the fit you already have. It assumes the state of the sampled day continues and says nothing about later days. It does not select or recommend a dose.</li>' +
+      '</ol>' +
+      '<p><b>When you are done:</b> <b>Print report</b> builds a one-page summary and <b>Export session</b> saves the case as a file. If you close the tab by accident, reopening the app offers to restore your work.</p>' +
+      '<p class="src">The window and sampling are explained in the background dialog. The model and its limits are in <b>About</b>.</p>';
+  }
+
+  function aboutSections() {
+    return '<h3>What this app estimates for mycophenolic acid in children</h3>' +
+      '<p>' + SCOPE + ' The steady-state AUC<sub>0–12h</sub> of the current regimen, as a median with a 5–95% interval, with the probability of lying inside, above or below your window, and the predicted trough for information.</p>' +
+      '<h3>How well did the model do</h3>' +
+      '<p>The model authors evaluated this model in children with kidney disease (Heida 2026). With samples at 0, 1 and 2 hours after the dose, the AUC of the same day was estimated with a mean prediction error of 0.1% and a normalised root mean squared error of 21.0%; with a trough only, 6.6% and 32.5%. The first is within the authors’ limit of 25%, the second is not. The reference was the AUC from the full profile estimated with the same model, in the same children the model was built on.</p>' +
+      '<p>Predicting the AUC at the next occasion, about three months later, was not precise enough: the mean prediction error was 15.4% and the normalised root mean squared error 48.6%, above the authors’ limit of 25%. <b>' + SAMPLED_DAY + '</b> The intervals describe the uncertainty about this patient on the days sampled. The day-to-day effect of the model is included for those days only.</p>' +
+      '<p>In simulations with the model itself, the AUC of a single day differed from the typical-day value by a factor of about 1.2 to 1.3 (one standard deviation; about 1.3 to 1.6 for the middle 90%), and on average lay 0 to 7% above it.</p>' +
+      '<h3>What it does not cover</h3>' +
+      '<ul class="about-list">' +
+      '<li>Ciclosporin co-medication (the authors state the model might not be extrapolated to it), EC-MPS and other indications.</li>' +
+      '<li>Children outside weight 13–80 kg or albumin 24–42 g/L (a warning is shown), and weight outside 3–200 kg or albumin outside 5–50 g/L (refused). The albumin effect is steep: for the same dose the typical AUC is about eight times lower at 15 g/L than at 34 g/L.</li>' +
+      '<li>Nephrotic syndrome, which was not in the development data.</li>' +
+      '<li>Enterohepatic recirculation, which is not modelled; the authors note that secondary peaks may be fitted poorly.</li>' +
+      '<li>Results below the limit of quantification. A result reported as “&lt; LLOQ” cannot be used, so omit it.</li>' +
+      '</ul>' + referenceSections();
+  }
+
+  function referenceSections() {
+    return '<h3>Reference values for mycophenolic acid (kidney transplantation)</h3>' +
+      '<div class="winmatrix-wrap"><table class="data about-tbl"><thead><tr><th>Setting</th><th>AUC<sub>0–12h</sub> (mg·h/L)</th><th>Source</th></tr></thead><tbody>' +
+      '<tr><td>Kidney transplantation (the app starts here)</td><td>30–60</td><td>' + spec().windowSets[0].grade + '</td></tr>' +
+      '</tbody></table></div>' +
+      '<h3>Why model-based estimation</h3>' +
+      '<p>A model-based estimate works with the sample times you actually have, takes weight and albumin into account, and gives the AUC with an interval from one fit.</p>' +
+      '<p class="src">Heida A, et al. <i>Eur J Clin Pharmacol</i> 2024;80:1761–1771. Heida A, et al. <i>Clin Pharmacokinet</i> 2026, doi:10.1007/s40262-026-01708-3. Bergan S, et al. <i>Ther Drug Monit</i> 2021;43(2):150–197.</p>';
+  }
+
+  function modelTable(sp) {
+    var C = sp.custom.constants;
+    var cv = function (v) { return v + ' (CV ' + (Math.sqrt(Math.exp(v) - 1) * 100).toFixed(1) + '%)'; };
+    var rows = [
+      ['CL/F (L/h at 70 kg, albumin 34 g/L)', C.CL + '; × (albumin/34)^' + C.ALB_EXP, cv(C.OM_CL)],
+      ['Vc/F, central volume (L at 70 kg)', C.VC, cv(C.OM_VC) + ' (large, poorly identified)'],
+      ['Vp/F, peripheral volume (L at 70 kg)', C.VP, '–'],
+      ['Q/F (L/h at 70 kg)', C.Q, cv(C.OM_Q)],
+      ['Transfer rate KTR (per hour at 70 kg)', C.KTR + ' (two equal first-order steps; the paper counts one transit compartment); × (weight/70)^−0.25', '–'],
+      ['Between-occasion variability of bioavailability', 'one effect per sampled day, up to ' + C.MAX_OCC, cv(C.OM_OCC)],
+      ['Weight scaling', 'clearances and Q × (weight/70)^0.75, volumes × (weight/70)', '–'],
+      ['Residual error (proportional)', 'variance ' + C.SIGMA_PROP, '–']
+    ];
+    var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+    return '<table class="about-tbl"><thead><tr><th>Parameter</th><th>Typical value</th><th>Variance</th></tr></thead><tbody>' +
+      rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td></tr>'; }).join('') + '</tbody></table>';
+  }
+
+  var HELP = {
+    wt: 'Body weight in kg. Clearance and the transfer rates scale with weight, volumes in proportion. The model was built on children of 12.9–79.9 kg; outside that range a warning is shown.',
+    window: 'Lower and upper bound of the AUC0–12h window (mg·h/L), the AUC over a 12-hour dosing interval at steady state. It starts at the kidney-transplant range 30–60. Dosing at another interval is compared as its 12-hour equivalent. Clear the window to see the interval without probabilities.',
+    ivexplore: 'Show the exposure the model gives for a dose of MMF you enter, at steady state, every 12 h, using this patient’s fitted posterior: the AUC0–12h and trough, with the probabilities against your window. It is a what-if for the day of the samples; exposure three months later could not be predicted in the authors’ evaluation.'
+  };
+
+  ECU.drugTexts.mpaped = {
+    background: background, gettingStarted: gettingStarted, aboutSections: aboutSections, modelTable: modelTable,
+    modelNote: 'Doses are MMF in mg, concentrations are mycophenolic acid in mg/L; the conversion is part of the model. Structure as in the authors’ run 57 with the values of the article; estimated with NONMEM FOCE-I.',
+    doseNote: 'Twice-daily mycophenolate mofetil (CellCept) in children with a kidney transplant, with tacrolimus or everolimus. Dose in mg of MMF, not mg of mycophenolic acid. Not for ciclosporin co-medication or EC-MPS.',
+    chartNote: 'Individual = this patient’s measured levels · red points = measurements. The curve is plasma MPA on the current regimen; the reported steady-state values are for the regimen at steady state. The window is shown in the results grid, not on this plot. Time axis in hours after the last dose.',
+    howto: '<li><b>Steady-state AUC₀–12h:</b> the model’s estimate for the current regimen, with a 5–95% interval. The interval covers the uncertainty in this patient’s parameters on the sampled days; a later measurement scatters more than that.</li>' +
+      '<li><b>Probability in window:</b> the chance that the AUC lies between your lower and upper bound.</li>' +
+      '<li><b>Trough:</b> predicted for information; the app has no trough target.</li>' +
+      '<li><b>Band (5–95%):</b> 90% plausible range for the true concentration curve. It does not include assay error, so a future measured value may fall outside it.</li>',
+    help: HELP,
+    shrinkNote: '<p class="legend-note"><b>Note:</b> the samples barely moved this patient’s clearance estimate, so the interval largely reflects population variability. Samples at 0, 1 and 2 hours after the dose add information.</p>',
+    resultNote: function (fit, h) {
+      return '<div class="legend-note">Steady-state values for the current regimen on a typical day. ' + SAMPLED_DAY + '</div>';
+    },
+    explorerSub: function () { return 'every 12 h, at steady state'; },
+    explorerNote: 'This is a what-if for the day of the samples: the exposure the model gives for the dose you enter, at steady state. In the authors’ evaluation, exposure three months later could not be predicted. It does not select or recommend a dose.',
+    reportPatient: function (c) {
+      var ex = c.ex;
+      return '<h2>Patient</h2><table class="data">' +
+        '<tr><th>ID</th><td>' + c.esc(c.pid) + '</td><th>Weight</th><td>' + c.esc(c.wt || ex.wt || '–') + ' kg</td></tr>' +
+        '<tr><th>Albumin</th><td>' + c.esc(ex.albumin || '–') + ' g/L</td><th>Assay</th><td>EMIT (model basis)</td></tr></table>';
+    },
+    reportNote: function (fit, h) {
+      return 'Steady state of the current regimen on a typical day. ' + SAMPLED_DAY;
+    },
+    diagNote: 'The central volume (Vc) is expected to be poorly informed; the AUC depends on clearance, not on the volumes.'
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* src/author_photo.js (inlined) */
 /* =========================================================================
  * NephroTDM: author photo for the About dialog.
@@ -4975,12 +5996,13 @@ html { scroll-behavior: smooth; }
 
   /* the plain-language probability sentence, shared by the screen tiles and the printed report */
   function probLine(m, fit, spec) {
-    var s = m.stats, c = m.corr, H = fit.hctRef;
+    var s = m.stats, c = m.corr, H = fit.hctRef, onCorr = m.judge === 'corrected' && !!c;   // onCorr: the window is defined for the corrected value (pediatric tacrolimus)
     if (m.informational) return 'Predicted concentration just before the next dose. Informational: the app has no trough target.';
     if (m.win) {
-      var pin = pct(s.pInWindow), pab = pct(s.pAboveLower), pbe = pct(s.pBelowUpper), pc = c ? pct(c.pInWindow) : null;
-      return '<b>' + pin + '% chance</b> the ' + m.what + ' is within the window ' + fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit) +
-        (pc != null && c && !(Math.abs((fit.hctReport || 0) - H) < 0.005) ? ' (corrected: ' + pc + '%)' : '') + '. Chance above ' + fmtC(m.win.lo) + ': ' + pab + '%. Chance below ' + fmtC(m.win.hi) + ': ' + pbe + '%.';
+      var ps = onCorr ? c : s;
+      var pin = pct(ps.pInWindow), pab = pct(ps.pAboveLower), pbe = pct(ps.pBelowUpper), pc = c ? pct(c.pInWindow) : null;
+      return '<b>' + pin + '% chance</b> the ' + (onCorr ? 'corrected ' : '') + m.what + ' is within the window ' + fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit) +
+        (!onCorr && pc != null && c && !(Math.abs((fit.hctReport || 0) - H) < 0.005) ? ' (corrected: ' + pc + '%)' : '') + '. Chance above ' + fmtC(m.win.lo) + ': ' + pab + '%. Chance below ' + fmtC(m.win.hi) + ': ' + pbe + '%.';
     }
     return 'No ' + m.what + ' window is set, so no probabilities are shown.' + esc(((spec.report && spec.report.noWindow) || {})[m.key] || '');
   }
@@ -4993,7 +6015,7 @@ html { scroll-behavior: smooth; }
     if (c) {
       var same = Math.abs((ctx.fit.hctReport || 0) - H) < 0.005;
       corrLine = '<div style="font-size:13px;color:' + INK + '">Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' :
-        '<b style="font-family:' + MONO + '">' + fmtC(c.median) + '</b> <span style="font-family:' + MONO + ';color:' + MUT + '">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + '</div>';
+        '<b style="font-family:' + MONO + '">' + fmtC(c.median) + '</b> <span style="font-family:' + MONO + ';color:' + MUT + '">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + (m.judge === 'corrected' && m.win ? ' <span style="color:' + MUT + '">· vs window</span>' : '') + '</div>';
     }
     var line = probLine(m, ctx.fit, ctx.spec);
     var note = m.note ? '<div style="font-size:12px;color:' + MUT + '">' + m.note + '</div>' : '';
@@ -5075,16 +6097,16 @@ html { scroll-behavior: smooth; }
       }
       cells.push([c.name, txt]);
     });
-    var d = ctx.doses || [], last = d[d.length - 1], iv = ctx.fit.intervalHours, noun = (ctx.spec.ui && ctx.spec.ui.noun) || (ctx.formLabel ? ctx.formLabel.replace(/\s*\(.*$/, '') : '');
+    var d = ctx.doses || [], last = d[d.length - 1], iv = ctx.fit.intervalHours, noun = (ctx.spec.ui && (ctx.spec.ui.doseNoun || ctx.spec.ui.noun)) || (ctx.formLabel ? ctx.formLabel.replace(/\s*\(.*$/, '') : '');
     if (last) {
       var mpa = ECU.model && ctx.form && !ctx.spec.custom && ECU.model.toMpaMg ? ' (= ' + fmtC(ECU.model.toMpaMg(last.amt, ctx.form)) + ' mg MPA)' : '';
-      cells.push(['Regimen, latest dose', last.amt + ' mg ' + noun + mpa + (ctx.ssMode ? ' every ' + iv + ' h' : ' (latest of ' + d.length + ' doses)') + ', ' + ctx.fmtClock(last.t), 2]);
+      cells.push(['Regimen, latest dose', last.amt + ' mg ' + noun + (last.form ? ' ' + last.form : '') + mpa + (ctx.ssMode ? ' every ' + iv + ' h' : ' (latest of ' + d.length + ' doses)') + ', ' + ctx.fmtClock(last.t), 2]);
     } else cells.push(['Regimen', '–']);
     return cells.map(function (c) { return cell(c[0], c[1], c[2]); }).join('');
   }
 
   function samplesTable(ctx) {
-    var obs = ctx.obs || [], custom = !!ctx.spec.custom;
+    var obs = ctx.obs || [], custom = !!ctx.spec.custom && !(ctx.spec.ui && ctx.spec.ui.bloodCorrection === false);
     if (!obs.length) return '<div style="font-size:13px;color:' + MUT + '">None entered.</div>';
     var th = function (t, right) { return '<th style="padding:4px 6px;border-bottom:1.5px solid ' + INK + ';font-weight:600;text-align:' + (right ? 'right' : 'left') + '">' + t + '</th>'; };
     var td = function (t, right) { return '<td style="padding:3px 6px;border-bottom:1px solid #b5b5b5;font-family:' + MONO + ';text-align:' + (right ? 'right' : 'left') + '">' + esc(t) + '</td>'; };
@@ -5098,13 +6120,14 @@ html { scroll-behavior: smooth; }
     var aucWin = (fit.windowSet && fit.winLo != null && fit.winHi != null) ? { lo: fit.winLo, hi: fit.winHi } : null;
     var trWin = fit.troughWin && fit.troughWin.set ? { lo: fit.troughWin.lo, hi: fit.troughWin.hi } : null;
     var aucNote = (!custom && fit.intervalHours !== 12 && fit.aucRaw) ? 'As the 12-hour equivalent of the AUC over ' + esc(fit.intervalHours) + ' h (' + fmtC(fit.aucRaw.median) + ' ' + esc(ctx.units.auc) + ' as simulated).' : '';
-    var tAuc = { key: 'auc', what: 'AUC', title: 'AUC₀–₁₂ₕ', unit: ctx.units.auc, stats: fit.auc, corr: custom ? fit.aucCorr : null, win: aucWin, ctx: ctx, note: aucNote };
-    var tTr = { key: 'trough', what: 'trough', title: custom ? 'Trough' : 'Predicted trough', unit: ctx.units.conc, stats: fit.trough, corr: custom ? fit.troughCorr : null, win: custom ? trWin : null, informational: !custom, ctx: ctx };
+    var blood = custom && !(spec.ui && spec.ui.bloodCorrection === false);   // read through whole blood: corrected rows, haematocrit, a trough window
+    var tAuc = { key: 'auc', what: 'AUC', title: 'AUC₀–₁₂ₕ', unit: ctx.units.auc, stats: fit.auc, corr: blood ? fit.aucCorr : null, win: aucWin, judge: spec.ui && spec.ui.windowOn, ctx: ctx, note: [aucNote, aucWin && ctx.winNotes ? ctx.winNotes.auc : ''].filter(Boolean).join(' ') };
+    var tTr = { key: 'trough', what: 'trough', title: blood ? 'Trough' : 'Predicted trough', unit: ctx.units.conc, stats: fit.trough, corr: blood ? fit.troughCorr : null, win: blood ? trWin : null, informational: !blood, judge: spec.ui && spec.ui.windowOn, ctx: ctx, note: blood && trWin && ctx.winNotes ? ctx.winNotes.trough : '' };
     var tiles = (rp.lead === 'trough' ? [tTr, tAuc] : [tAuc, tTr]);
-    var anyCorr = custom, anyWin = !!(aucWin || (custom && trWin));
+    var anyCorr = blood, anyWin = !!(aucWin || (blood && trWin));
     var H = fit.hctRef;
     var reading = (rp.reading || []).map(function (s) { return '<li>' + esc(s.replace('@H', H != null ? H : '')) + '</li>'; }).join('');
-    var notes = [ctx.notes && ctx.notes.convergence, ctx.notes && ctx.notes.shortHistory, ctx.notes && ctx.notes.shrink, ctx.notes && ctx.notes.anchor].filter(Boolean);
+    var notes = [ctx.notes && ctx.notes.convergence, ctx.notes && ctx.notes.shortHistory, ctx.notes && ctx.notes.shrink, ctx.notes && ctx.notes.anchor, ctx.notes && ctx.notes.scope].filter(Boolean);
     var noteBox = notes.length ? '<div class="rp-notes" style="border:1.5px solid ' + INK + ';border-radius:6px;padding:8px 12px;font-size:13px;line-height:1.45"><b>Notes</b><ul style="margin:4px 0 0;padding-left:18px">' + notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul></div>' : '';
     var stamp = ctx.inputsChanged ? '<div style="border:2px solid ' + INK + ';border-radius:6px;padding:8px 12px;font-size:13px;line-height:1.45"><b>Inputs changed on screen since this forecast.</b> This report shows the inputs the forecast was run with; re-run before signing if the changes matter.</div>' : '';
     var citeTxt = esc(rp.scope || '') + '. <b style="color:' + INK + ';font-weight:600">Model:</b> ' + cite(rp.modelCite || spec.article || '') + (rp.windowSource ? ' <b style="color:' + INK + ';font-weight:600">Windows:</b> ' + cite(rp.windowSource) : '');
@@ -5114,7 +6137,7 @@ html { scroll-behavior: smooth; }
     return '<div class="rp-page" style="font-size:13px;line-height:1.45;color:' + INK + '">' +
       stamp +
       '<div style="border-bottom:2px solid ' + INK + ';padding-bottom:6px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">' +
-      '<div style="display:flex;align-items:center;gap:12px">' + logo + '<div><h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.3px">NephroTDM report: ' + esc(noun) + '</h1></div></div>' +
+      '<div style="display:flex;align-items:center;gap:12px">' + logo + '<div><h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.3px">NephroTDM report: ' + esc((spec.ui && spec.ui.reportNoun) || noun) + '</h1></div></div>' +
       '<div style="text-align:right;font-size:12px;color:' + MUT + ';line-height:1.45">Generated ' + esc(ctx.now) + '<br>NephroTDM v' + esc(ctx.version) + '</div></div>' +
       '<p class="rp-cite" style="margin:0;font-size:12px;line-height:1.4;color:' + MUT + '">' + citeTxt + '</p></div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:5px 12px;border:1px solid ' + RULE + ';border-radius:6px;padding:8px 12px;background:#f7f7f7">' + patientCells(ctx) + '</div>' +
@@ -5159,6 +6182,13 @@ html { scroll-behavior: smooth; }
    * model (haematocrit, assay, two windows, steady-state AUC and trough as the reported pair). */
   var MPA_UNITS = { conc: 'mg/L', auc: 'mg·h/L', dose: 'mg' };
   function isCustom() { var s = M.drug(); return !!(s && s.custom); }
+  /* Read through whole blood (haematocrit per sample, corrected rows, a trough window): the tacrolimus-type specs. A custom spec with ui.bloodCorrection
+   * false (pediatric MPA, a plasma assay) takes the same engine path without any of that. */
+  function hasBlood(sp) { sp = sp || M.drug(); return !!(sp && sp.custom && !(sp.ui && sp.ui.bloodCorrection === false)); }
+  /* A spec with doseForms (pediatric tacrolimus) asks for the formulation on every dose and on the steady-state regimen. */
+  function hasDoseForm(sp) { sp = sp || M.drug(); return !!(sp && sp.doseForms && sp.doseForms.length); }
+  function doseFormLabel(v, sp) { sp = sp || M.drug(); var f = (sp.doseForms || []).filter(function (x) { return x.value === v; })[0]; return f ? f.label : ''; }
+  function hctLimits(sp) { sp = sp || M.drug(); var c = M.covariateFields(sp.id).filter(function (x) { return x.id === 'hct'; })[0]; return { lo: c && c.min != null ? c.min : 0.10, hi: c && c.max != null ? c.max : 0.65 }; }
   /* Per-drug presentation flags live on the spec (spec.ui: noun, weight, predDose, badge, chartTitle, shrinkEta, modelLine) and the drug's
    * texts in the registry ECU.drugTexts[id] (texts_tac.js, texts_evr.js). MPA has neither. */
   /* Does this drug's model take body weight? The weight field is hidden for drugs that do not, but keeps whatever was typed for another drug, so nothing may read it blindly. */
@@ -5172,6 +6202,7 @@ html { scroll-behavior: smooth; }
   function aucUnit(fit) { var u = unitsOf(fit).auc; return (fit && fit.assay === 'cmia') ? u + ', CMIA scale' : u; }
   function resetWindows() {
     ['pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi'].forEach(function (id) { if ($(id)) $(id).value = ''; });
+    state.winSet = null;
   }
   /* Fill the four window fields from one of the drug's window sets (null bound = empty field). Used when the drug is chosen and by the Use buttons. */
   function applyWindowSet(id) {
@@ -5183,8 +6214,18 @@ html { scroll-behavior: smooth; }
       el.value = f[1] == null ? '' : f[1];
       el.dispatchEvent(new Event('input', { bubbles: true }));   // fold labels, stale mark and autosave follow
     });
+    state.winSet = w.id;
     return true;
   }
+  /* The window a result was judged against, in words (drugs that judge on the corrected value, where the set depends on the time since transplantation:
+   * the printout must show which set was used). kind: 'auc' or 'trough'; winSetId: the set the run was made with, or null for typed bounds. */
+  function windowNoteOf(kind, spec, winSetId, short) {
+    if (!uiVal('windowOn', spec)) return '';
+    var w = (spec.windowSets || []).filter(function (x) { return x.id === winSetId; })[0];
+    var own = !w || (kind === 'auc' ? !w.auc : !w.trough);
+    return esc('Window: ' + (own ? 'your own bounds' : w.label) + (short ? '.' : ', judged on the corrected value.'));   // short: the printout, where the probability sentence already says which value is compared
+  }
+  function joinNotes(parts) { var p = parts.filter(Boolean); return p.length ? ' · ' + p.join(' · ') : ''; }
   function troughBounds() {
     var lo = parseFloat($('pt-tlo').value), hi = parseFloat($('pt-thi').value);
     return { lo: lo >= 0 ? lo : null, hi: hi > 0 ? hi : null };
@@ -5238,6 +6279,7 @@ html { scroll-behavior: smooth; }
     lastRun: null,
     lastRunInputs: null,
     lastRunView: null,   // what the report shows about the run: taken at the same moment as lastRun (F4)
+    winSet: null,        // the id of the window set the bounds came from (a "Use this window" press); cleared by typing a bound
     running: false
   };
 
@@ -5270,6 +6312,15 @@ html { scroll-behavior: smooth; }
     }
     var miss = missingCovariates();
     if (miss) return miss;
+    var fm = missingFormulation();
+    if (fm) return fm;
+    return '';
+  }
+  function missingFormulation() {
+    if (!hasDoseForm()) return '';
+    if (currentMode() === 'ss') return $('ss-form').value === '' ? 'Choose the formulation of the regimen (capsule or suspension).' : '';
+    var ds = effectiveDoses();
+    for (var i = 0; i < ds.length; i++) if (!ds[i].form) return 'Choose the formulation (capsule or suspension) for dose ' + (i + 1) + '.';
     return '';
   }
   function missingCovariates() {
@@ -5296,6 +6347,7 @@ html { scroll-behavior: smooth; }
       hint.className = 'run-hint ready';
       hint.textContent = modelPending() ? '' : 'Ready to run.';
     }
+    updateScopeWarn();
     $('iv-status').textContent = modelPending()
       ? 'Waiting for the model file.'
       : (state.lastRun ? '' : 'Run a forecast first.');
@@ -5305,7 +6357,7 @@ html { scroll-behavior: smooth; }
     var s = M.drug();
     var lo = s.wtMin != null ? s.wtMin : 3, hi = s.wtMax != null ? s.wtMax : 300;
     var el = $('pt-wt');
-    el.min = lo; el.max = hi;
+    el.min = lo; el.max = hi; el.step = s.wtStep != null ? s.wtStep : '0.5';
     el.title = 'Body weight in kg (' + lo + '–' + hi + ')';
   }
 
@@ -5334,7 +6386,7 @@ html { scroll-behavior: smooth; }
   function updateFormLabels() {
     var s = M.drug();
     if (!s.FORMS) {
-      var lbl0 = 'Dose (' + UN().dose + (uiVal('noun') ? ' ' + uiVal('noun') : '') + ')';
+      var lbl0 = 'Dose (' + UN().dose + (uiVal('doseNoun') || uiVal('noun') ? ' ' + (uiVal('doseNoun') || uiVal('noun')) : '') + ')';
       ['doseAmtLbl', 'ssDoseLbl', 'ivAmtLbl'].forEach(function (id) { if ($(id)) $(id).textContent = lbl0; });
       if ($('ecmpsSampleNote')) $('ecmpsSampleNote').hidden = true;
       if ($('tacDoseNote')) {
@@ -5444,7 +6496,7 @@ html { scroll-behavior: smooth; }
           '<input type="' + (c.units && /text|as declared/i.test(c.units) ? 'text' : 'number') +
           '" inputmode="decimal" id="cov-' + esc(c.id) + '" title="' + esc(c.help || '') + '"' +
           (c.min != null ? ' min="' + c.min + '"' : '') + (c.max != null ? ' max="' + c.max + '"' : '') +
-          (c.step != null ? ' step="' + c.step + '"' : '') + '>';
+          (c.step != null ? ' step="' + c.step + '"' : '') + (c.placeholder ? ' placeholder="' + esc(c.placeholder) + '"' : '') + '>';
       }
       host.appendChild(wrap);
     });
@@ -5495,7 +6547,10 @@ html { scroll-behavior: smooth; }
     if ($('chartNote')) $('chartNote').innerHTML = drugText('chartNote');
     if ($('howtoList')) $('howtoList').innerHTML = drugText('howto');
     var show = function (id, on) { if ($(id)) $(id).style.display = on ? '' : 'none'; };
-    show('troughTargetRow', tac); show('dosePredWrap', uiFlag('predDose')); show('obsHctWrap', tac);
+    show('troughTargetRow', hasBlood()); show('dosePredWrap', uiFlag('predDose')); show('obsHctWrap', hasBlood());
+    show('doseFormWrap', hasDoseForm()); show('ssFormWrap', hasDoseForm()); fillFormSelects();
+    var wtIn = $('pt-wt'); if (wtIn) wtIn.placeholder = uiVal('wtPlaceholder') || 'e.g. 70';
+    var oh = $('obs-hct'); if (oh && s.custom) { var hl = hctLimits(s); oh.min = hl.lo; oh.max = hl.hi; }
     var lbl = $('obsValLbl'); if (lbl) lbl.textContent = 'Concentration (' + u.conc + (u.concAlt ? ', = ' + u.concAlt : '') + ')';
     var fl = document.querySelector('#windowFold .fold-lbl'); if (fl) fl.textContent = 'Therapeutic window: AUC₀–12h';
     var lo = document.querySelector('label[for="pt-winlo"]'); if (lo) lo.textContent = 'Lower bound AUC₀–12h (' + u.auc + ')';
@@ -5520,6 +6575,29 @@ html { scroll-behavior: smooth; }
     });
     var ssi = $('ss-interval'); if (ssi) { ssi.min = s.intervalRange ? s.intervalRange.min : 1; ssi.max = s.intervalRange ? s.intervalRange.max : 48; }
     updateWindowFoldVal();
+  }
+  /* The formulation selects (one per dose row, one for the steady-state regimen): options from the spec, a leading "choose…" so nothing is assumed. */
+  function fillFormSelects() {
+    var s = M.drug(), opts = hasDoseForm(s) ? '<option value="">choose…</option>' + s.doseForms.map(function (f) { return '<option value="' + esc(f.value) + '">' + esc(f.label) + '</option>'; }).join('') : '';
+    ['dose-form', 'ss-form'].forEach(function (id) {
+      var el = $(id); if (!el) return;
+      var keep = el.value;
+      if (el._for !== s.id) { el.innerHTML = opts; el._for = s.id; if (Array.prototype.some.call(el.options, function (o) { return o.value === keep; })) el.value = keep; }
+    });
+  }
+  /* A value outside the range the model was built on is shown, not refused (the refusal limits are the spec's own). */
+  function scopeWarningsLive() {
+    var s = M.drug();
+    if (!s || !s.custom || !s.custom.scopeWarnings) return [];
+    var wt = parseFloat($('pt-wt').value);
+    return s.custom.scopeWarnings(isFinite(wt) ? wt : NaN, extraCovariates());
+  }
+  function updateScopeWarn() {
+    var el = $('scopeWarn');
+    if (!el) return;
+    var w = scopeWarningsLive();
+    el.hidden = !w.length;
+    el.textContent = w.join(' ');
   }
   function extraCovariates() {
     var extra = {};
@@ -5546,13 +6624,14 @@ html { scroll-behavior: smooth; }
     var tbl = $('doseTable');
     if (!tbl) return;
     var tac = uiFlag('predDose');   // the prednisolone column belongs to drugs that take a per-dose prednisolone value
-    var rows = ['<tr><th>#</th><th>Date &amp; time</th><th class="num">Dose (' + esc(UN().dose) + ')</th>' + (tac ? '<th class="num">Prednisolone (mg/day)</th>' : '') + '<th>Route</th><th></th></tr>'];
+    var fm = hasDoseForm();         // the formulation column belongs to drugs that take a per-dose formulation
+    var rows = ['<tr><th>#</th><th>Date &amp; time</th><th class="num">Dose (' + esc(UN().dose) + ')</th>' + (tac ? '<th class="num">Prednisolone (mg/day)</th>' : '') + (fm ? '<th>Formulation</th>' : '') + '<th>Route</th><th></th></tr>'];
     if (!state.doses.length) {
-      rows.push('<tr><td colspan="' + (tac ? 6 : 5) + '" class="note" style="border:none">No doses entered yet.</td></tr>');
+      rows.push('<tr><td colspan="' + (5 + (tac ? 1 : 0) + (fm ? 1 : 0)) + '" class="note" style="border:none">No doses entered yet.</td></tr>');
     } else {
       state.doses.forEach(function (d, i) {
         rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(d.t)) +
-          '</td><td class="num">' + esc(d.amt) + '</td>' + (tac ? '<td class="num">' + (d.pred != null ? esc(d.pred) : '<span class="hint">patient</span>') + '</td>' : '') + '<td>' + esc(d.route) +
+          '</td><td class="num">' + esc(d.amt) + '</td>' + (tac ? '<td class="num">' + (d.pred != null ? esc(d.pred) : '<span class="hint">patient</span>') + '</td>' : '') + (fm ? '<td>' + (d.form ? esc(doseFormLabel(d.form)) : '<span class="hint">choose</span>') + '</td>' : '') + '<td>' + esc(d.route) +
           '</td><td><button class="linklike no-print" data-del-dose="' + i + '" title="Remove this dose">remove</button></td></tr>');
       });
     }
@@ -5561,7 +6640,7 @@ html { scroll-behavior: smooth; }
   function renderObsTable() {
     var tbl = $('obsTable');
     if (!tbl) return;
-    var tac = isCustom();
+    var tac = hasBlood();
     var rows = ['<tr><th>#</th><th>Date &amp; time</th><th class="num">Concentration (' + esc(UN().conc) + ')</th>' + (tac ? '<th class="num">Haematocrit (L/L)</th>' : '') + '<th></th></tr>'];
     if (!state.obs.length) {
       rows.push('<tr><td colspan="' + (tac ? 5 : 4) + '" class="note" style="border:none">No measurements entered yet.</td></tr>');
@@ -5596,7 +6675,7 @@ html { scroll-behavior: smooth; }
     var iv = parseFloat($('ss-interval').value);
     var anchor = dtLocalToHours($('ss-anchor').value);
     var n = M.drug().ssNDoses;   // every spec declares it; ssHistory defaults to 10 if one ever does not
-    return M.ssHistory({ amt: amt, intervalHours: iv, tEnd: anchor, n: n, route: 'oral' });
+    return M.ssHistory({ amt: amt, intervalHours: iv, tEnd: anchor, n: n, route: 'oral', form: hasDoseForm() ? $('ss-form').value : '' });
   }
   function effectiveDoses() {
     return currentMode() === 'ss' ? ssToDoses() : state.doses.slice().sort(function (a, b) { return a.t - b.t; });
@@ -5638,6 +6717,7 @@ html { scroll-behavior: smooth; }
       doses: doses.map(function (d) {
         var o = { t: d.t, amt: M.toEngineAmt($('pt-drug').value, d.amt, form), route: d.route || 'oral' };
         if (d.pred != null) o.pred = d.pred;
+        if (d.form) o.form = d.form;
         return o;
       }),
       steadyState: currentMode() === 'ss',   // the doses above are the expansion of an endless regimen
@@ -5677,7 +6757,7 @@ html { scroll-behavior: smooth; }
       if (c.type !== 'number' || c.id === 'wt' || c.min == null || c.max == null) return;
       var v = parseFloat(extra[c.id]);
       if (isFinite(v) && (v < c.min || v > c.max)) {
-        out.push(c.name + ' ' + v + ' ' + c.units + ' is outside ' + c.min + ' to ' + c.max + ' ' + c.units + '.' + (c.units === 'L/L' && v > 1 ? ' Enter it as a fraction (0.33), not a percentage.' : ''));
+        out.push(c.name + ' ' + v + ' ' + c.units + ' is outside ' + c.min + ' to ' + c.max + ' ' + c.units + '.' + (c.units === 'L/L' && v > 1 ? ' Enter it as a fraction (0.33), not a percentage.' : '') + (c.units === 'g/L' && v < 10 ? ' Enter it in g/L (34, not 3.4 g/dL).' : ''));
       }
     });
     var ds = (input.doses || []).map(function (d) { return d.t; }).filter(isFinite).sort(function (a, b) { return a - b; });
@@ -5793,22 +6873,22 @@ html { scroll-behavior: smooth; }
     var corrLine = '';
     if (c) {
       var same = Math.abs((fit.hctReport || 0) - H) < 0.005;
-      corrLine = '<div class="tile-c"><span class="tile-cmark" aria-hidden="true"></span>Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' : '<b>' + fmtC(c.median) + '</b> <span class="tile-cr">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + '</div>';
+      corrLine = '<div class="tile-c"><span class="tile-cmark" aria-hidden="true"></span>Corrected to haematocrit ' + esc(H) + ': ' + (same ? 'same as measured' : '<b>' + fmtC(c.median) + '</b> <span class="tile-cr">(' + fmtC(c.p5) + ' to ' + fmtC(c.p95) + ')</span>') + (m.judge === 'corrected' && m.win ? ' <span class="tile-sub">· compared with the window</span>' : '') + '</div>';
     }
-    var chips = '';
-    if (!m.informational && m.win && isFinite(s.pInWindow)) {
+    var chips = '', ps = (m.judge === 'corrected' && c) ? c : s;   // the window is defined for the corrected value (pediatric tacrolimus): the chips follow it
+    if (!m.informational && m.win && isFinite(ps.pInWindow)) {
       var chip = function (l, v, sub) { return '<div class="chip-p"><div class="chip-l">' + l + '</div><div class="chip-v">' + fmtP(v) + '</div><div class="chip-s">' + sub + '</div></div>'; };
-      chips = '<div class="chips">' + chip('In the window', s.pInWindow, fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit)) + chip('Above the lower bound', s.pAboveLower, 'above ' + fmtC(m.win.lo)) + chip('Below the upper bound', s.pBelowUpper, 'below ' + fmtC(m.win.hi)) + '</div>';
+      chips = '<div class="chips">' + chip('In the window', ps.pInWindow, fmtC(m.win.lo) + ' to ' + fmtC(m.win.hi) + ' ' + esc(m.unit)) + chip('Above the lower bound', ps.pAboveLower, 'above ' + fmtC(m.win.lo)) + chip('Below the upper bound', ps.pBelowUpper, 'below ' + fmtC(m.win.hi)) + '</div>';
     }
     var scaleMax = Math.max(s.p95, c ? c.p95 : 0, m.win ? m.win.hi : 0, 1e-9);
-    return '<div class="tile"><div class="tile-h"><span class="tile-name">' + m.title + '</span><span class="tile-sub">median and 5 to 95% interval</span></div>' +
+    return '<div class="tile"><div class="tile-h"><span class="tile-name">' + m.title + '</span><span class="tile-sub">' + (m.judge === 'corrected' && c ? 'as measured (haematocrit ' + esc(fmtC(fit.hctReport)) + '), median and 5 to 95% interval' : 'median and 5 to 95% interval') + '</span></div>' +
       '<div class="tile-v"><span class="num">' + fmtC(s.median) + '</span><span class="unit">' + esc(m.unit) + '</span><span class="rng">' + fmtC(s.p5) + ' to ' + fmtC(s.p95) + '</span></div>' +
       corrLine + rangeBarHtml(s, c, m.win, scaleMax) + '<p class="tile-line">' + ECU.report.probLine(m, fit, m.spec) + '</p>' + chips + (m.note ? '<div class="tile-note">' + m.note + '</div>' : '') + '</div>';
   }
   /* kept as the entry point of the explorer and the screen results: label, stats, corrected stats, window, whether it is set, unit */
   function exposureRows(label, stats, corr, win, winSet, unit, fit, subExtra) {
     var isAuc = /AUC/.test(label);
-    return resultTileHtml({ key: isAuc ? 'auc' : 'trough', what: isAuc ? 'AUC' : 'trough', title: esc(label), unit: unit, stats: stats, corr: corr,
+    return resultTileHtml({ key: isAuc ? 'auc' : 'trough', what: isAuc ? 'AUC' : 'trough', title: esc(label), unit: unit, stats: stats, corr: corr, informational: !isAuc && !hasBlood(M.spec(fit.drug)), judge: uiVal('windowOn', M.spec(fit.drug)),
       win: (winSet && win && win.lo != null && win.hi != null) ? { lo: win.lo, hi: win.hi } : null, fit: fit, spec: M.spec(fit.drug), note: subExtra ? esc(subExtra.replace(/^ · /, '')) : '' });
   }
   /* the lead tile is the one the drug's consensus works from (spec.report.lead), shown first */
@@ -5819,9 +6899,11 @@ html { scroll-behavior: smooth; }
   }
   function renderResultsTac(fit) {
     var uA = aucUnit(fit), uC = concUnit(fit);
-    $('aucBlock').innerHTML = exposureRows('Steady-state AUC₀–12h', fit.auc, fit.aucCorr, { lo: fit.winLo, hi: fit.winHi }, fit.windowSet, uA, fit,
-      fit.intervalHours !== 12 && fit.aucRaw ? ' · from AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' × 12/' + esc(fit.intervalHours) : '');
-    $('troughBlock').innerHTML = exposureRows('Steady-state trough', fit.trough, fit.troughCorr, fit.troughWin, fit.troughWin && fit.troughWin.set, uC, fit, '');
+    var bl = hasBlood(M.spec(fit.drug));
+    var wsId = state.lastRunView ? state.lastRunView.winSet : null, spec1 = M.spec(fit.drug);
+    $('aucBlock').innerHTML = exposureRows('Steady-state AUC₀–12h', fit.auc, bl ? fit.aucCorr : null, { lo: fit.winLo, hi: fit.winHi }, fit.windowSet, uA, fit,
+      joinNotes([fit.intervalHours !== 12 && fit.aucRaw ? 'from AUC₀–' + esc(fit.intervalHours) + 'h ' + fmtC(fit.aucRaw.median) + ' × 12/' + esc(fit.intervalHours) : '', fit.windowSet ? windowNoteOf('auc', spec1, wsId) : '']));
+    $('troughBlock').innerHTML = exposureRows(bl ? 'Steady-state trough' : 'Predicted trough, steady state', fit.trough, bl ? fit.troughCorr : null, fit.troughWin, bl && fit.troughWin && fit.troughWin.set, uC, fit, fit.troughWin && fit.troughWin.set ? joinNotes([windowNoteOf('trough', spec1, wsId)]) : '');
     orderTiles(M.spec(fit.drug));
     var badge = fit.hasObs
       ? '<span class="badge info" title="' + esc(fit.nDraws) + ' posterior draws, MCMC acceptance ' + (fit.acceptance * 100).toFixed(0) + '%">Fitted to this patient’s ' +
@@ -5848,7 +6930,12 @@ html { scroll-behavior: smooth; }
       : '<div class="legend-note">Steady-state values for the current regimen on a typical day, at the haematocrit of the latest sample (' +
         esc(fmtC(fit.hctReport)) + ' L/L); a single day varies around them by about 23%. The corrected lines refer to haematocrit ' + esc(fit.hctRef) +
         '.' + esc(cn) + '</div>';
-    $('advisoryBlock').innerHTML = capNote + resNote + shrinkNote +
+    var scopeNote = '';
+    if (spec.custom && spec.custom.scopeWarnings) {
+      var sw = spec.custom.scopeWarnings(fit.wt, fit.extra);
+      if (sw.length) scopeNote = '<div class="legend-note"><b>Outside the model’s range.</b> ' + esc(sw.join(' ')) + '</div>';
+    }
+    $('advisoryBlock').innerHTML = scopeNote + capNote + resNote + shrinkNote +
       '<div class="legend-note">' + esc(DG.summaryHint(fit)) + '</div>';
   }
 
@@ -5937,8 +7024,8 @@ html { scroll-behavior: smooth; }
       state.lastRunInputs = input;
       state.lastRunView = {
         patientId: $('pt-code').value, weight: usesWeight() ? $('pt-wt').value : '',
-        form: currentForm(), win: windowBounds(), troughWin: troughBounds(), drug: $('pt-drug').value, extra: extraCovariates(),
-        doses: effectiveDoses().map(function (d) { return d.pred != null ? { t: d.t, amt: d.amt, route: d.route, pred: d.pred } : { t: d.t, amt: d.amt, route: d.route }; }),
+        form: currentForm(), win: windowBounds(), troughWin: troughBounds(), winSet: state.winSet, drug: $('pt-drug').value, extra: extraCovariates(),
+        doses: effectiveDoses().map(function (d) { var o = d.pred != null ? { t: d.t, amt: d.amt, route: d.route, pred: d.pred } : { t: d.t, amt: d.amt, route: d.route }; if (d.form) o.form = d.form; return o; }),
         obs: state.obs.map(function (o) { return o.hct != null ? { t: o.t, c: o.c, hct: o.hct } : { t: o.t, c: o.c }; })
       };
       clearStale();
@@ -6039,16 +7126,16 @@ html { scroll-behavior: smooth; }
         draws: fit.draws || [], drug: fit.drug, wt: fit.wt, extra: fit.extra,
         tEnd: last.t, amounts: [cu.doseToEngine(amt)], intervalHours: 12,
         winLo: fit.winLo, winHi: fit.winHi, troughLo: fit.troughWin.lo, troughHi: fit.troughWin.hi,
-        pred: last.pred != null ? last.pred : fit.extra.pred, hct: fit.hctReport, assay: fit.assay
+        pred: last.pred != null ? last.pred : fit.extra.pred, hct: fit.hctReport, assay: fit.assay, form: last.form
       });
       var r = rows && rows[0];
       if (!r) { $('iv-status').textContent = 'Exploration failed.'; return; }
-      var uA = aucUnit(fit), uC = concUnit(fit), txe = TX(fit.drug);
+      var uA = aucUnit(fit), uC = concUnit(fit), txe = TX(fit.drug), bl = hasBlood(M.spec(fit.drug));
       $('iv-out').innerHTML =
-        '<div class="res-grid"><div class="res-cell"><div class="res-lbl">Candidate maintenance dose</div><div class="res-val">' + esc(amt) + ' mg ' + esc(uiVal('noun', M.spec(fit.drug)) || '') + '</div>' +
+        '<div class="res-grid"><div class="res-cell"><div class="res-lbl">Candidate maintenance dose</div><div class="res-val">' + esc(amt) + ' mg ' + esc(uiVal('doseNoun', M.spec(fit.drug)) || uiVal('noun', M.spec(fit.drug)) || '') + '</div>' +
         '<div class="res-sub">' + (txe && txe.explorerSub ? esc(txe.explorerSub(last, fit)) : 'every 12 h, at steady state, prednisolone ' + esc(last.pred != null ? last.pred : fit.extra.pred) + ' mg/day') + '</div></div></div>' +
-        '<div class="tiles">' + exposureRows('Steady-state AUC₀–12h', r.auc, r.aucCorr, { lo: fit.winLo, hi: fit.winHi }, r.windowSet, uA, fit, '') +
-        exposureRows('Steady-state trough', r.trough, r.troughCorr, fit.troughWin, r.troughWinSet, uC, fit, '') + '</div>' +
+        '<div class="tiles">' + exposureRows('Steady-state AUC₀–12h', r.auc, bl ? r.aucCorr : null, { lo: fit.winLo, hi: fit.winHi }, r.windowSet, uA, fit, r.windowSet ? joinNotes([windowNoteOf('auc', M.spec(fit.drug), state.lastRunView ? state.lastRunView.winSet : null)]) : '') +
+        exposureRows(bl ? 'Steady-state trough' : 'Predicted trough, steady state', r.trough, bl ? r.troughCorr : null, fit.troughWin, bl && r.troughWinSet, uC, fit, bl && r.troughWinSet ? joinNotes([windowNoteOf('trough', M.spec(fit.drug), state.lastRunView ? state.lastRunView.winSet : null)]) : '') + '</div>' +
         '<div class="legend-note">' + ((txe && txe.explorerNote) || 'The explorer reuses this patient’s fitted posterior and simulates the candidate dose to steady state on a typical day. Whole-blood concentrations rise a little less than in proportion to the dose because binding to red cells saturates, so doubling a dose gives somewhat less than double the exposure. It does not select or recommend a dose.') + '</div>';
       $('iv-status').textContent = '';
     } catch (e) {
@@ -6301,9 +7388,10 @@ html { scroll-behavior: smooth; }
       patient: { code: $('pt-code').value, wt: usesWeight() ? $('pt-wt').value : '', age: $('pt-age').value, renal: $('pt-renal').value, extra: $('pt-extracov').value },
       window: { lo: $('pt-winlo').value, hi: $('pt-winhi').value },
       troughWindow: { lo: $('pt-tlo').value, hi: $('pt-thi').value },
+      windowSet: state.winSet,
       formulation: $('pt-form').value, recency: $('pt-recency').value,
       mode: currentMode(),
-      ss: { dose: $('ss-dose').value, interval: $('ss-interval').value, anchor: $('ss-anchor').value },
+      ss: { dose: $('ss-dose').value, interval: $('ss-interval').value, anchor: $('ss-anchor').value, form: $('ss-form') ? $('ss-form').value : '' },
       doses: state.doses, obs: state.obs,
       extras: extraCovariates(),
       report: { prepared: $('rp-prepared').value, advice: $('rp-advice').value }
@@ -6327,6 +7415,7 @@ html { scroll-behavior: smooth; }
       var tw = o.troughWindow || {};
       $('pt-tlo').value = tw.lo != null ? tw.lo : '';
       $('pt-thi').value = tw.hi != null ? tw.hi : '';
+      state.winSet = typeof o.windowSet === 'string' ? o.windowSet : null;
       $('pt-form').value = o.formulation || 'mmf';
       $('pt-recency').value = o.recency || 'off';
       if (o.ss) {
@@ -6339,7 +7428,7 @@ html { scroll-behavior: smooth; }
       if (r) r.checked = true;
       // R2: older sessions may carry route 'iv'; the oral-only model must not fit those as IV.
       state.doses = Array.isArray(o.doses) ? o.doses.filter(function (d) { return isFinite(d.t) && d.amt > 0; })
-        .map(function (d) { return d.pred != null && isFinite(d.pred) ? { t: d.t, amt: d.amt, route: 'oral', pred: d.pred } : { t: d.t, amt: d.amt, route: 'oral' }; }) : [];
+        .map(function (d) { var o = d.pred != null && isFinite(d.pred) ? { t: d.t, amt: d.amt, route: 'oral', pred: d.pred } : { t: d.t, amt: d.amt, route: 'oral' }; if (typeof d.form === 'string' && d.form) o.form = d.form; return o; }) : [];
       // R4: censoring is no longer supported. An old file's “< LLOQ” samples cannot be fitted, and dropping them
       // silently would change the result, so they are left out AND the user is told how many.
       var allObs = Array.isArray(o.obs) ? o.obs : [];
@@ -6350,6 +7439,11 @@ html { scroll-behavior: smooth; }
       $('rp-prepared').value = rp.prepared || '';
       $('rp-advice').value = rp.advice || '';
       renderDoseTable(); renderObsTable(); renderDrugAndCovariates(); applyMode();
+      if (hasDoseForm()) {   // the selects were just rebuilt for this drug: the regimen's formulation, and the last dose's as the default of the next row
+        var sf = $('ss-form'), df = $('dose-form'), lastD = state.doses[state.doses.length - 1];
+        if (sf) sf.value = (o.ss && o.ss.form) || '';
+        if (df) df.value = lastD && lastD.form ? lastD.form : '';
+      }
       if (o.extras) {
         Object.keys(o.extras).forEach(function (k) {
           var el = $('cov-' + k);
@@ -6440,7 +7534,8 @@ html { scroll-behavior: smooth; }
       units: { auc: fit ? aucUnit(fit) : UN().auc, conc: fit ? concUnit(fit) : UN().conc },
       settings: fit ? fittingSettingsText(state.lastRunInputs) : '',
       advice: $('rp-advice').value, prepared: $('rp-prepared').value, fmtClock: fmtHoursClock,
-      notes: fit ? reportNotes(fit, spec) : {}
+      notes: fit ? reportNotes(fit, spec) : {},
+      winNotes: view ? { auc: windowNoteOf('auc', spec, view.winSet, true), trough: windowNoteOf('trough', spec, view.winSet, true) } : null
     };
     var sheet = $('reportSheet');
     sheet.innerHTML = fit ? ECU.report.build(ctx) : '<div class="rp-page"><h1 style="margin:0;font-size:20px">NephroTDM report</h1><p>No forecast has been run in this session. Run a forecast first, then print the report.</p></div>';
@@ -6455,6 +7550,7 @@ html { scroll-behavior: smooth; }
       convergence: DG.convergenceNote(fit),
       shortHistory: fit.warnSingleDose ? 'Only one dose was entered, so this AUC describes a single dose from zero, not steady state.' : DG.shortHistoryNote(fit),
       shrink: spec.custom ? '' : cap(DG.shrinkageNote(fit)),
+      scope: (spec.custom && spec.custom.scopeWarnings) ? spec.custom.scopeWarnings(fit.wt, fit.extra).join(' ') : '',
       anchor: fit.aucAnchorShifted ? 'The AUC window is anchored at the most recent morning dose (EC-MPS targets refer to morning-dose profiles); an evening-anchored window would read lower.' : ''
     };
   }
@@ -6478,7 +7574,9 @@ html { scroll-behavior: smooth; }
       var b = ev.target.closest ? ev.target.closest('button[data-winset]') : null;
       if (!b) return;
       var w = (M.drug().windowSets || []).filter(function (x) { return x.id === b.getAttribute('data-winset'); })[0];
-      if (w && applyWindowSet(w.id)) { closeModal('backgroundModal'); toast('Window set: ' + w.label + '.'); }
+      var sp9 = M.drug(), other = w && uiVal('windowOn', sp9) ? (w.auc ? [$('pt-tlo').value, $('pt-thi').value] : [$('pt-winlo').value, $('pt-winhi').value]) : null;
+      var clears = other && (other[0] !== '' || other[1] !== '') ? ' The ' + (w.auc ? 'trough' : 'AUC') + ' window was cleared.' : '';
+      if (w && applyWindowSet(w.id)) { closeModal('backgroundModal'); toast('Window set: ' + w.label + '.' + clears); }
     });
     $('btnBackground').addEventListener('click', function () {
       var bb = $('backgroundBody');
@@ -6576,10 +7674,11 @@ html { scroll-behavior: smooth; }
       updateRunButtons();
       markStale();
     });
-    ['pt-wt', 'pt-age', 'pt-renal', 'pt-extracov', 'pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi', 'pt-recency', 'pt-code', 'pt-form'].forEach(function (id) {
+    ['pt-wt', 'pt-age', 'pt-renal', 'pt-extracov', 'pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi', 'pt-recency', 'pt-code', 'pt-form', 'ss-form'].forEach(function (id) {
       var el = $(id);
       if (el) el.addEventListener('input', markStale);
     });
+    ['pt-winlo', 'pt-winhi', 'pt-tlo', 'pt-thi'].forEach(function (id) { $(id).addEventListener('input', function () { state.winSet = null; }); });   // a typed bound is no longer the set's
     $('pt-winlo').addEventListener('input', updateWindowFoldVal);
     $('pt-winhi').addEventListener('input', updateWindowFoldVal);
     $('pt-tlo').addEventListener('input', updateWindowFoldVal);
@@ -6604,6 +7703,11 @@ html { scroll-behavior: smooth; }
       var dr = M.drug().dose;
       if (dr && !(amt >= dr.min && amt <= dr.max)) { toast('A dose of ' + amt + ' ' + UN().dose + ' is outside the range this model covers (' + dr.min + ' to ' + dr.max + ' ' + UN().dose + '). Check the unit.'); return; }
       var dose = { t: t, amt: amt, route: route };
+      if (hasDoseForm()) {
+        var fv = $('dose-form').value;
+        if (!fv) { toast('Choose the formulation of this dose (capsule or suspension).'); return; }
+        dose.form = fv;
+      }
       if (uiFlag('predDose') && $('dose-pred') && $('dose-pred').value !== '') {
         var pr = parseFloat($('dose-pred').value);
         if (!(pr >= 0)) { toast('Enter the prednisolone dose in mg/day (0 or more), or leave it empty.'); return; }
@@ -6626,10 +7730,10 @@ html { scroll-behavior: smooth; }
         return;
       }
       var ob = { t: t, c: c };
-      if (isCustom()) {
-        var hv = $('obs-hct').value !== '' ? parseFloat($('obs-hct').value) : covNum('hct');
+      if (hasBlood()) {
+        var hv = $('obs-hct').value !== '' ? parseFloat($('obs-hct').value) : covNum('hct'), hl = hctLimits();
         if (hv > 1 && hv <= 100) { toast('Haematocrit is entered in L/L (for example 0.33), not as a percentage.'); return; }
-        if (!(hv >= 0.10 && hv <= 0.65)) { toast('Enter the haematocrit of this sample in L/L (0.10–0.65), or fill in the patient card value.'); return; }
+        if (!(hv >= hl.lo && hv <= hl.hi)) { toast('Enter the haematocrit of this sample in L/L (' + hl.lo.toFixed(2) + '–' + hl.hi.toFixed(2) + '), or fill in the patient card value.'); return; }
         ob.hct = hv;
       }
       state.obs.push(ob);
@@ -6721,8 +7825,13 @@ html { scroll-behavior: smooth; }
     applySession: applySession,
     aboutHtml: aboutHtml,
     drugText: drugText,
+    scopeWarningsLive: scopeWarningsLive,
+    hasBlood: hasBlood,
+    hasDoseForm: hasDoseForm,
     drugCardsHtml: drugCardsHtml,
     resultTileHtml: resultTileHtml,
+    exposureRows: exposureRows,
+    windowNoteOf: windowNoteOf,
     backgroundHtml: backgroundHtml,
     gettingStartedBodyHtml: gettingStartedBodyHtml
   };

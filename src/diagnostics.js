@@ -125,10 +125,12 @@
   function summaryHintTac(fit) {
     var u = unitsOfFit(fit), parts = [];
     var a = fit.auc, t = fit.trough;
-    parts.push('Steady-state AUC0–12h ' + fmtC(a.median) + ' ' + u.auc + ' (5–95% ' + fmtC(a.p5) + ' to ' + fmtC(a.p95) + '); corrected to haematocrit ' + fit.hctRef + ': ' + fmtC(fit.aucCorr.median) + ' (' + fmtC(fit.aucCorr.p5) + ' to ' + fmtC(fit.aucCorr.p95) + ').');
-    parts.push('Steady-state trough ' + fmtC(t.median) + ' ' + u.conc + ' (5–95% ' + fmtC(t.p5) + ' to ' + fmtC(t.p95) + '); corrected: ' + fmtC(fit.troughCorr.median) + ' (' + fmtC(fit.troughCorr.p5) + ' to ' + fmtC(fit.troughCorr.p95) + ').');
-    if (fit.windowSet && isFinite(a.pInWindow)) parts.push('Probability of the AUC within its window: ' + Math.round(a.pInWindow * 100) + '%.');
-    if (fit.troughWin && fit.troughWin.set && isFinite(t.pInWindow)) parts.push('Probability of the trough within its window: ' + Math.round(t.pInWindow * 100) + '%.');
+    var blood = fit.hctRef != null;   // a drug with a plasma assay (pediatric MPA) has no corrected value
+    parts.push('Steady-state AUC0–12h ' + fmtC(a.median) + ' ' + u.auc + ' (5–95% ' + fmtC(a.p5) + ' to ' + fmtC(a.p95) + ')' + (blood ? '; corrected to haematocrit ' + fit.hctRef + ': ' + fmtC(fit.aucCorr.median) + ' (' + fmtC(fit.aucCorr.p5) + ' to ' + fmtC(fit.aucCorr.p95) + ')' : '') + '.');
+    parts.push('Steady-state trough ' + fmtC(t.median) + ' ' + u.conc + ' (5–95% ' + fmtC(t.p5) + ' to ' + fmtC(t.p95) + ')' + (blood ? '; corrected: ' + fmtC(fit.troughCorr.median) + ' (' + fmtC(fit.troughCorr.p5) + ' to ' + fmtC(fit.troughCorr.p95) + ')' : '') + '.');
+    var onCorr = blood && root.ECU.model.spec(fit.drug).ui && root.ECU.model.spec(fit.drug).ui.windowOn === 'corrected', aw = onCorr ? fit.aucCorr : a, tw = onCorr ? fit.troughCorr : t;   // pediatric tacrolimus: the window is defined for the corrected value
+    if (fit.windowSet && isFinite(aw.pInWindow)) parts.push('Probability of the ' + (onCorr ? 'corrected ' : '') + 'AUC within its window: ' + Math.round(aw.pInWindow * 100) + '%.');
+    if (fit.troughWin && fit.troughWin.set && isFinite(tw.pInWindow)) parts.push('Probability of the ' + (onCorr ? 'corrected ' : '') + 'trough within its window: ' + Math.round(tw.pInWindow * 100) + '%.');
     if (!fit.hasObs) parts.push('No measurements entered: this is the population forecast for the covariates given.');
     if (fit.acceptance != null && isFinite(fit.acceptance)) parts.push('MCMC acceptance ' + (fit.acceptance * 100).toFixed(0) + '%.');
     return parts.join(' ');
