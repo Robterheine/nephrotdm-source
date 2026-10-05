@@ -135,11 +135,8 @@ t('hidden select: the sr-only utility beats the field and phone width rules, so 
   });
 });
 
-t('first-visit notice: names everolimus (not an outdated "new: tacrolimus" message) and is shown again once, under a new key', function () {
-  var note = html.slice(html.indexOf('id="modelIntegratedNote"'), html.indexOf('id="modelIntegratedNote"') + 700);
-  truthy(/everolimus/i.test(note) && /Zwart 2021/.test(note), 'the notice announces everolimus');
-  falsy(/tacrolimus for adult kidney transplant recipients \(Størset 2014\) now sits/.test(html), 'the old announcement is gone');
-  truthy(/nephrotdm-note-v14/.test(ui) && !/nephrotdm-note-v12/.test(ui), 'a new storage key, so people who dismissed the old notice see this one once');
+t('no "new in this version" banner at the top of the page', function () {
+  falsy(/modelIntegratedNote|nephrotdm-note-v/.test(html + ui), 'the banner and its storage key are gone');
 });
 
 t('phone header: the help links share one compact row', function () {

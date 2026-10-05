@@ -35,8 +35,8 @@
     id: 'mpa',
     label: 'Mycophenolic acid',
     article: 'de Winter BCM, van Gelder T, Glander P, et al. Population Pharmacokinetics of Mycophenolic Acid: A Comparison between Enteric-Coated Mycophenolate Sodium and Mycophenolate Mofetil in Renal Transplant Recipients. Clin Pharmacokinet 2008;47(12):827–838.',
-    backgroundLabel: 'MPA TDM background',
-    card: { name: 'Mycophenolic acid', sub: 'AUC₀–₁₂ₕ · de Winter 2008' },
+    backgroundLabel: 'Mycophenolic acid background',
+    card: { name: 'Mycophenolic acid (adult kidney)', sub: 'AUC₀–₁₂ₕ · de Winter 2008' },
     // the one-page report (src/report.js)
     report: {
       lead: 'auc',
@@ -137,8 +137,8 @@
     windowDefaultLo: 30,
     windowDefaultHi: 60,
     // Short on purpose (golden rule 9 / DESIGN_PLAN.md D11): the full per-indication
-    // reference table lives behind the “MPA TDM background” dialog, not on the main screen.
-    windowHint: 'See “MPA TDM background” for reference values and best practices for TDM.',
+    // reference table lives behind the “Mycophenolic acid background” dialog, not on the main screen.
+    windowHint: 'See “Mycophenolic acid background” for reference values and best practices for TDM.',
     samplePeak: 'MMF: ≥2 samples (typical LSS 20 min, 1 h, 3 h post-dose). EC-MPS: 3–4 samples (typical 1.5 h, 2 h, 4 h ± 6 h). Trough-only is discouraged.',
 
     assay: 'pooled source studies, mixed assay basis (not stated per study)',

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NephroTDM</title>
-<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-05 05:17 UTC) -->
+<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-05 06:28 UTC) -->
 <style>
 /* fonts.css (inlined) */
 /* IBM Plex Sans (one variable file, weights 400 to 600) and IBM Plex Mono (500, 600), Latin subset, embedded so the single offline file looks the same everywhere.
@@ -557,11 +557,6 @@ html { scroll-behavior: smooth; }
     </span>
   </div>
 
-  <div class="note no-print" id="modelIntegratedNote" hidden>
-    <b>New:</b> everolimus for adult kidney transplant recipients (Zwart 2021) joins mycophenolic acid and tacrolimus, and the printed report is now one A4 page. Choose the drug in card 1. Each model’s parameters, scope and limits are in <b>About</b>.
-    <button class="linklike" id="modelNoteDismiss" style="margin-left:8px">dismiss</button>
-  </div>
-
   <div class="stepper no-print" id="stepper">
     <a class="step" href="#patientCard" data-step="wt"><i>1</i> Patient &amp; covariates</a>
     <a class="step" href="#chartCard" data-step="dose"><i>2</i> Dosing &amp; samples</a>
@@ -923,8 +918,8 @@ html { scroll-behavior: smooth; }
     id: 'mpa',
     label: 'Mycophenolic acid',
     article: 'de Winter BCM, van Gelder T, Glander P, et al. Population Pharmacokinetics of Mycophenolic Acid: A Comparison between Enteric-Coated Mycophenolate Sodium and Mycophenolate Mofetil in Renal Transplant Recipients. Clin Pharmacokinet 2008;47(12):827–838.',
-    backgroundLabel: 'MPA TDM background',
-    card: { name: 'Mycophenolic acid', sub: 'AUC₀–₁₂ₕ · de Winter 2008' },
+    backgroundLabel: 'Mycophenolic acid background',
+    card: { name: 'Mycophenolic acid (adult kidney)', sub: 'AUC₀–₁₂ₕ · de Winter 2008' },
     // the one-page report (src/report.js)
     report: {
       lead: 'auc',
@@ -1025,8 +1020,8 @@ html { scroll-behavior: smooth; }
     windowDefaultLo: 30,
     windowDefaultHi: 60,
     // Short on purpose (golden rule 9 / DESIGN_PLAN.md D11): the full per-indication
-    // reference table lives behind the “MPA TDM background” dialog, not on the main screen.
-    windowHint: 'See “MPA TDM background” for reference values and best practices for TDM.',
+    // reference table lives behind the “Mycophenolic acid background” dialog, not on the main screen.
+    windowHint: 'See “Mycophenolic acid background” for reference values and best practices for TDM.',
     samplePeak: 'MMF: ≥2 samples (typical LSS 20 min, 1 h, 3 h post-dose). EC-MPS: 3–4 samples (typical 1.5 h, 2 h, 4 h ± 6 h). Trough-only is discouraged.',
 
     assay: 'pooled source studies, mixed assay basis (not stated per study)',
@@ -5391,7 +5386,7 @@ html { scroll-behavior: smooth; }
     if (hint) {
       // Do not dump the pending-model paragraph onto the main screen.
       // Operational pending state lives in #pendingNotice; clinical background
-      // lives behind the "MPA TDM background" button.
+      // lives behind the "Mycophenolic acid background" button.
       hint.textContent = s.pending ? '' : (s.info || '');
     }
     var wh = $('windowHint');
@@ -6093,7 +6088,7 @@ html { scroll-behavior: smooth; }
     renal: 'Renal function, if the model uses it as a covariate.',
     extracov: 'Other model covariates, if any.',
     form: 'The formulation is this model’s covariate (de Winter 2008): it switches the absorption rate (ka 4.1 vs 3.0 /h), the lag-time structure (MMF 0.3 h at any time; EC-MPS trimodal morning lag 0.95/1.88/4.83 h plus a ~9 h evening lag), and the dose conversion to MPA content (×0.739 MMF, ×0.936 EC-MPS). Doses are entered as prescribed, in product mg.',
-    window: 'Lower and upper bound of the therapeutic AUC0–12h (mg·h/L), the AUC over a 12-hour dosing interval at steady state. Dosing at another interval is compared as its 12-hour equivalent (AUC₁₂ = AUC₀–ₓ × 12/ₓ). The default 30–60 is the kidney-transplant window (Bergan 2021, grade B, II; liver transplant uses the same range). Other indications differ: heart transplant >36, proliferative lupus nephritis ≈50 (prefer 45–60), childhood nephrotic syndrome >45–50, lung none established, HSCT AUC0–24h >30. See “MPA TDM background” for the table with citations. Both bounds are used for the therapeutic probabilities; the window is a clinical input you control.',
+    window: 'Lower and upper bound of the therapeutic AUC0–12h (mg·h/L), the AUC over a 12-hour dosing interval at steady state. Dosing at another interval is compared as its 12-hour equivalent (AUC₁₂ = AUC₀–ₓ × 12/ₓ). The default 30–60 is the kidney-transplant window (Bergan 2021, grade B, II; liver transplant uses the same range). Other indications differ: heart transplant >36, proliferative lupus nephritis ≈50 (prefer 45–60), childhood nephrotic syndrome >45–50, lung none established, HSCT AUC0–24h >30. See “Mycophenolic acid background” for the table with citations. Both bounds are used for the therapeutic probabilities; the window is a clinical input you control.',
     recency: 'Optionally gives older measurements a larger residual error so recent samples dominate the fit. Off = ×1, low ×1.5, medium ×2, high ×3. Off by default.',
     ivexplore: 'Evaluate a candidate maintenance dose at steady state using this patient’s fitted posterior. Choose the dosing interval (12 h default, or 24 h). Expected AUC is always shown as a 12-hour equivalent (for other intervals AUC₁₂ = AUC₀–x × 12/x, applied per posterior draw, so the 5–95% interval transforms exactly), together with the probability within the therapeutic window and the predicted trough C(x) at the chosen interval (no target). For EC-MPS, the AUC window is anchored at the most recent morning dose (the target refers to morning-dose profiles).'
   };
@@ -6171,7 +6166,7 @@ html { scroll-behavior: smooth; }
   function gettingStartedBodyHtmlMpa() {
     return '<p>This tool estimates steady-state mycophenolic acid AUC<sub>0–12h</sub> for one specific patient (the AUC over a 12-hour dosing interval at steady state), using their covariates and any measured concentrations you enter. Nothing you type leaves this device. There is no server involved. Keep this window open and work through the four cards on the main screen in order.</p>' +
       '<ol class="gs-steps">' +
-      '<li><b>Patient &amp; covariates.</b> This model (de Winter 2008) uses exactly one covariate: the <b>formulation</b> (MMF or EC-MPS), which switches absorption behaviour and the dose conversion. Doses are entered as prescribed, in product mg; the app converts to MPA content internally (×0.739 MMF, ×0.936 EC-MPS). The therapeutic AUC<sub>0–12h</sub> window defaults to 30–60 mg·h/L, the kidney-transplant value (Bergan 2021; liver transplant uses the same range). Other indications need different bounds: heart transplant >36, proliferative lupus nephritis ≈50 (prefer 45–60), childhood nephrotic syndrome >45–50, so set the bounds for <em>your</em> indication before reading the probabilities (“MPA TDM background” lists them all with citations).</li>' +
+      '<li><b>Patient &amp; covariates.</b> This model (de Winter 2008) uses exactly one covariate: the <b>formulation</b> (MMF or EC-MPS), which switches absorption behaviour and the dose conversion. Doses are entered as prescribed, in product mg; the app converts to MPA content internally (×0.739 MMF, ×0.936 EC-MPS). The therapeutic AUC<sub>0–12h</sub> window defaults to 30–60 mg·h/L, the kidney-transplant value (Bergan 2021; liver transplant uses the same range). Other indications need different bounds: heart transplant >36, proliferative lupus nephritis ≈50 (prefer 45–60), childhood nephrotic syndrome >45–50, so set the bounds for <em>your</em> indication before reading the probabilities (“Mycophenolic acid background” lists them all with citations).</li>' +
       '<li><b>Dosing schedule &amp; measured concentrations.</b> Choose <b>Full schedule</b> if you know the actual dates and doses this patient has received, or <b>Steady state</b> if they are already on a stable maintenance regimen and you just want to enter the dose and interval (hours). Add measured concentrations. For MMF use at least two post-dose samples (typical limited-sampling times 20 min, 1 h, 3 h); for EC-MPS three to four (1.5 h, 2 h, 4 h ± 6 h), and note the source model’s own warning that sparse sampling is expected to be unreliable for EC-MPS, so prefer more samples across the interval there. Trough-only sampling is discouraged. A measured level is what lets the app personalize the estimate instead of just showing the population average.</li>' +
       '<li><b>Forecast.</b> Press <b>Run forecast</b>. The result is a predicted steady-state AUC<sub>0–12h</sub> with a 5–95% interval. If the regimen’s interval is not 12 h, the AUC is reported as its 12-hour equivalent (AUC₁₂ = AUC<sub>0–ₓ</sub> × 12/ₓ), so it always targets the therapeutic window. You also get the probability that AUC sits inside that window, and a predicted trough C(τ) with <em>no trough target</em>. This is a prediction, not a recommendation. The app never suggests a dose or interval; that decision stays yours. Time is in hours everywhere.</li>' +
       '<li><b>Dose explorer</b> (optional). Once you have run a forecast, this card shows what a different <em>maintenance</em> dose would do for this same patient, using the fit you already have. You can also choose the interval (12 h or 24 h); whatever you pick, the AUC is reported as a 12-hour equivalent (AUC₁₂ = AUC₀–x × 12/x) so it stays comparable with the window, alongside the three window probabilities and the predicted trough. Skip it if you only need the estimate for the regimen already planned.</li>' +
@@ -6697,20 +6692,6 @@ html { scroll-behavior: smooth; }
     updateRunButtons();
     bind();
     maybeRestore();
-    // One-time notice about what is new in this version (never repeats once dismissed).
-    try {
-      if (!localStorage.getItem('nephrotdm-note-v14') && !M.drug().pending) {
-        var mn = $('modelIntegratedNote');
-        if (mn) {
-          mn.hidden = false;
-          var md = $('modelNoteDismiss');
-          if (md) md.onclick = function () {
-            try { localStorage.setItem('nephrotdm-note-v14', '1'); } catch (e2) {}
-            mn.hidden = true;
-          };
-        }
-      }
-    } catch (e) {}
   }
 
   if (typeof document !== 'undefined') {

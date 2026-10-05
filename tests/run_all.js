@@ -364,7 +364,7 @@ t('window defaults: 30–60 mg·h/L; on-screen hint is a short pointer (golden r
   // which carries the full per-indication reference table (asserted in the
   // background test). The long inclusive text was removed from the main screen
   // by design (DESIGN_PLAN.md D11) — do not move it back.
-  truthy(s.windowHint && /MPA TDM background/i.test(s.windowHint), 'windowHint must point to the background dialog');
+  truthy(s.windowHint && /Mycophenolic acid background/i.test(s.windowHint), 'windowHint must point to the background dialog');
   truthy(/reference values/i.test(s.windowHint) && /best practices/i.test(s.windowHint), 'windowHint must name what the dialog holds');
   assert(s.windowHint.length <= 120, 'windowHint must stay short (≤120 chars) — found ' + (s.windowHint || '').length);
 });

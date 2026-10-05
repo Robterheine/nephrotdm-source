@@ -208,7 +208,7 @@ src/
   ui.js                   ECU.ui — app shell: pending gating, model-driven covariate
                           rows, dosing/sampling entry, run flow, results grid, dose
                           explorer, report printing, session export/import, autosave,
-                          modals (About / Getting started / MPA TDM background),
+                          modals (About / Getting started / Mycophenolic acid background),
                           help popovers. Exposes state, buildRunInput(), validateRun(),
                           effectiveDoses(), windowBounds(), aboutHtml()… for tests.
   app.css                 All styles, including the print stylesheet (§7).
@@ -308,7 +308,7 @@ oral model inside model.js): tests unlock the stub, prove the machinery, then
 - The on-screen window hint is deliberately a **short pointer** ("See 'MPA TDM
   background' for reference values and best practices for TDM" — golden rule 9; the
   ≤120-char limit is test-enforced). The full per-indication table lives in the
-  "MPA TDM background" modal: liver 30–60; heart >36; lung none established; adult
+  "Mycophenolic acid background" modal: liver 30–60; heart >36; lung none established; adult
   HSCT AUC₀–₂₄h >30 (different interval); proliferative **lupus nephritis ≈50**
   (prefer 45–60; Wuttiputhanun et al., *Lupus Sci Med* 2024;11:e001093);
   **childhood nephrotic syndrome >45–50** (Querfeld & Weber, *Pediatr Nephrol*

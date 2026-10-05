@@ -495,7 +495,7 @@ t('copy: text shared by all drugs names no drug, is not stale, and a drug withou
   falsy(drugWords.test(btn[1] + btn[2]), 'the background button is neutral until the drug sets its label');
   falsy(/simulated back over a fixed number of intervals/.test(html), 'steady state is exact since 1.1.0; the old sentence is false');
   truthy(/Everything runs locally/.test(html) && /autosave/.test(html), 'the subtitle states where the data stay, including the autosave');
-  eq(M.spec('mpa').backgroundLabel, 'MPA TDM background'); eq(S.backgroundLabel, 'Tacrolimus background');
+  eq(M.spec('mpa').backgroundLabel, 'Mycophenolic acid background'); eq(S.backgroundLabel, 'Tacrolimus background');
   // a drug that has not been given its own texts must not inherit another drug's
   M.drugs.zzz = Object.assign({}, S, { id: 'zzz', label: 'Test drug', backgroundLabel: undefined });
   try {
