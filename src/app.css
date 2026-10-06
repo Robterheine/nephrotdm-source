@@ -385,9 +385,11 @@ button.info:hover { color: var(--accent); }
 .rp-page * { box-sizing: border-box; }
 @media print {
   html, body { background: #ffffff; margin: 0; }
-  body * { visibility: hidden; }
-  #reportSheet, #reportSheet * { visibility: visible; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  #reportSheet { position: absolute; left: 0; top: 0; width: 210mm; }
+  body > *:not(#reportSheet) { display: none !important; }
+  #reportSheet, #reportSheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #reportSheet { width: 210mm; }
+  /* Safari ignores @page size and prints on Letter (279 mm): the sheet must not be forced to 297 mm or the footer spills onto a second page */
+  .rp-page { min-height: 275mm; }
 }
 @media screen and (max-width: 820px) { .rp-page { width: 100%; padding: 16px; } }
 

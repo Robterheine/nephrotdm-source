@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NephroTDM</title>
-<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-06 06:30 UTC) -->
+<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-06 15:42 UTC) -->
 <style>
 /* fonts.css (inlined) */
 /* IBM Plex Sans (one variable file, weights 400 to 600) and IBM Plex Mono (500, 600), Latin subset, embedded so the single offline file looks the same everywhere.
@@ -403,9 +403,11 @@ button.info:hover { color: var(--accent); }
 .rp-page * { box-sizing: border-box; }
 @media print {
   html, body { background: #ffffff; margin: 0; }
-  body * { visibility: hidden; }
-  #reportSheet, #reportSheet * { visibility: visible; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  #reportSheet { position: absolute; left: 0; top: 0; width: 210mm; }
+  body > *:not(#reportSheet) { display: none !important; }
+  #reportSheet, #reportSheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #reportSheet { width: 210mm; }
+  /* Safari ignores @page size and prints on Letter (279 mm): the sheet must not be forced to 297 mm or the footer spills onto a second page */
+  .rp-page { min-height: 275mm; }
 }
 @media screen and (max-width: 820px) { .rp-page { width: 100%; padding: 16px; } }
 
@@ -7546,8 +7548,12 @@ html { scroll-behavior: smooth; }
     var sheet = $('reportSheet');
     sheet.innerHTML = fit ? ECU.report.build(ctx) : '<div class="rp-page"><h1 style="margin:0;font-size:20px">NephroTDM report</h1><p>No forecast has been run in this session. Run a forecast first, then print the report.</p></div>';
     sheet.hidden = false;
+    /* paper size is not known to Safari (it prints on Letter, 1056 px): a report taller than 1000 px is scaled down to fit one page, with headroom for the printer's own rounding */
+    var pg = sheet.firstElementChild, ph = 0;
+    if (pg) { pg.style.minHeight = '0'; ph = pg.offsetHeight; pg.style.minHeight = ''; }
+    sheet.style.zoom = ph > 1000 ? String(1000 / ph) : '';
     root.print();
-    setTimeout(function () { sheet.hidden = true; }, 400);
+    setTimeout(function () { sheet.hidden = true; sheet.style.zoom = ''; }, 400);
   }
   /* the cautions that must travel with the numbers: sampling convergence, a short or single-dose history, weak information, EC-MPS anchoring */
   function reportNotes(fit, spec) {

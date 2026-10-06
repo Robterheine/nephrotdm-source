@@ -1376,8 +1376,12 @@
     var sheet = $('reportSheet');
     sheet.innerHTML = fit ? ECU.report.build(ctx) : '<div class="rp-page"><h1 style="margin:0;font-size:20px">NephroTDM report</h1><p>No forecast has been run in this session. Run a forecast first, then print the report.</p></div>';
     sheet.hidden = false;
+    /* paper size is not known to Safari (it prints on Letter, 1056 px): a report taller than 1000 px is scaled down to fit one page, with headroom for the printer's own rounding */
+    var pg = sheet.firstElementChild, ph = 0;
+    if (pg) { pg.style.minHeight = '0'; ph = pg.offsetHeight; pg.style.minHeight = ''; }
+    sheet.style.zoom = ph > 1000 ? String(1000 / ph) : '';
     root.print();
-    setTimeout(function () { sheet.hidden = true; }, 400);
+    setTimeout(function () { sheet.hidden = true; sheet.style.zoom = ''; }, 400);
   }
   /* the cautions that must travel with the numbers: sampling convergence, a short or single-dose history, weak information, EC-MPS anchoring */
   function reportNotes(fit, spec) {
