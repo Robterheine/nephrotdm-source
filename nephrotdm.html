@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NephroTDM</title>
-<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-05 18:50 UTC) -->
+<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-06 06:30 UTC) -->
 <style>
 /* fonts.css (inlined) */
 /* IBM Plex Sans (one variable file, weights 400 to 600) and IBM Plex Mono (500, 600), Latin subset, embedded so the single offline file looks the same everywhere.
@@ -188,6 +188,12 @@ details.help > summary { font-weight: 600; color: #37424f; font-size: var(--text
 .row3 > div.f-sel { flex: 1 1 230px; }
 .row3 label.f { font-size: var(--text-xs); font-weight: 600; color: var(--muted); }
 .row3 input, .row3 select { width: 100%; }
+/* iOS/iPadOS Safari gives datetime-local an intrinsic width that beats width:100%, so it spills out of a narrow card and under its neighbour; it also centres the text */
+input[type="datetime-local"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; text-align: left; }
+input[type="datetime-local"]::-webkit-date-and-time-value { text-align: left; }
+/* the form is a flex container: without this its row shrink-wraps to its content and overflows a narrow card */
+form.inline > .row3 { flex: 1 1 100%; min-width: 0; }
+.sub-h .hint { font-weight: 400; }
 #iv-interval { min-width: 190px; }
 
 /* ---------- notes & banners ---------- */
