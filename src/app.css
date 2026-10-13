@@ -355,7 +355,8 @@ button.info:hover { color: var(--accent); }
   input, select, textarea { font-size: 16px; }
   input[type="text"], input[type="number"], input[type="datetime-local"], select { min-height: 40px; }
   button, .seg label.seg-opt { min-height: 40px; }
-  button.linklike, button.info { min-height: 0; }
+  button.info { min-height: 0; }
+  button.linklike { min-height: 32px; padding: 6px 8px; }   /* remove / clear all: a fingertip, not a text line */
   .seg { flex-wrap: wrap; border-radius: var(--radius-md); }
   .res-hero .res-val { font-size: var(--text-xl); }
   .modal { width: 94%; padding: var(--sp-4); }
@@ -390,6 +391,7 @@ button.info:hover { color: var(--accent); }
   #reportSheet { width: 210mm; }
   /* Safari ignores @page size and prints on Letter (279 mm): the sheet must not be forced to 297 mm or the footer spills onto a second page */
   .rp-page { min-height: 275mm; }
+  .rp-page > div, .rp-page > section, .rp-page > table, .rp-page li, .rp-notes { break-inside: avoid; page-break-inside: avoid; }
 }
 @media screen and (max-width: 820px) { .rp-page { width: 100%; padding: 16px; } }
 
@@ -448,7 +450,7 @@ details.menu[open] > summary { border-color: var(--accent); color: var(--accent-
 .drug-card[aria-pressed="true"] { border: 2px solid var(--accent); padding: 11px 15px; background: #f6fafc; box-shadow: var(--shadow-sm); }
 
 /* ---------- result tiles (every drug) ---------- */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--sp-4); }
 .tiles > div { display: flex; flex-direction: column; min-width: 0; }   /* the result blocks are the grid items, so `order` (lead tile first) applies */
 .tiles > div:empty { display: none; }
 .tiles > div > .tile { flex: 1 1 auto; }

@@ -46,8 +46,9 @@
     if (Math.abs(v) >= 10) return v.toFixed(1);
     return v.toFixed(2);
   }
+  var titleSeq = 0;
   function esc(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function render(el, cfg) {
@@ -101,8 +102,9 @@
     var parts = [];
 
     // background
-    parts.push('<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ' + W + ' ' + H + '" style="overflow:visible" role="img" aria-labelledby="' + (cfg.titleId || 'chartTitle') + '">');
-    parts.push('<title id="' + (cfg.titleId || 'chartTitle') + '">' + esc(cfg.title || '') + '</title>');
+    var tid = cfg.titleId || ('chartTitle' + (++titleSeq));   // unique: the main chart and an open diagnostics panel used to share one id
+    parts.push('<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ' + W + ' ' + H + '" style="overflow:visible" role="img" aria-labelledby="' + tid + '">');
+    parts.push('<title id="' + tid + '">' + esc(cfg.title || '') + '</title>');
     if (cfg.desc) parts.push('<desc>' + esc(cfg.desc) + '</desc>');
 
     // grid lines

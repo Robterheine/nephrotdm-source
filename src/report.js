@@ -16,7 +16,7 @@
   var MONO = "var(--mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)";
   var JOURNALS = ['Clin Pharmacokinet', 'Ther Drug Monit', 'Br J Clin Pharmacol'];
 
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function fmtC(v) {
     if (!isFinite(v)) return '–';
     if (Math.abs(v) >= 100) return v.toFixed(0);

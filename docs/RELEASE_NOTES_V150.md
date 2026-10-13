@@ -3,8 +3,8 @@
 **1.5.0 adds pediatric mycophenolic acid and pediatric tacrolimus** for children with a kidney transplant: the MPA model of Heida et al. (Eur J Clin Pharmacol
 2024;80:1761-1771) and the tacrolimus model of Schijvens et al. (Clin Pharmacokinet 2020;59:1483-1491) as refitted with weight and haematocrit only in Heida
 et al. (Clin Pharmacokinet 2026, doi:10.1007/s40262-026-01708-3). The three existing drugs are unchanged: in the browser their results, report text, chart and
-diagnostics are identical to the published 1.4.0 page, and the bit-identity records V16, V16b and the everolimus record are green. **Not published**: the
-repository and the live page still carry 1.4.0. Research use only, as before. Plan and decisions: `HANDOFF_PEDIATRIC.md`; evidence: see the table below.
+diagnostics are identical to the published 1.4.0 page, and the bit-identity records V16, V16b and the everolimus record are green. **Not published at the time of writing**: the
+repository and the live page still carried 1.4.0 when this was written. 1.5.0 was published on 5 October 2026; what changed after that is in `RELEASE_NOTES_V151.md`. Research use only, as before. Plan and decisions: `HANDOFF_PEDIATRIC.md`; evidence: see the table below.
 
 ## What changes for the person using it
 

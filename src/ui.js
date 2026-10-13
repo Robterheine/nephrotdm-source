@@ -70,7 +70,7 @@
   function covNum(id) { var el = covEl(id); var v = el ? parseFloat(el.value) : NaN; return isFinite(v) ? v : NaN; }
 
   function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function fmtC(v, d) {
     if (!isFinite(v)) return '–';
@@ -468,7 +468,7 @@
       state.doses.forEach(function (d, i) {
         rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(d.t)) +
           '</td><td class="num">' + esc(d.amt) + '</td>' + (tac ? '<td class="num">' + (d.pred != null ? esc(d.pred) : '<span class="hint">patient</span>') + '</td>' : '') + (fm ? '<td>' + (d.form ? esc(doseFormLabel(d.form)) : '<span class="hint">choose</span>') + '</td>' : '') + '<td>' + esc(d.route) +
-          '</td><td><button class="linklike no-print" data-del-dose="' + i + '" title="Remove this dose">remove</button></td></tr>');
+          '</td><td><button type="button" class="linklike no-print" data-del-dose="' + i + '" title="Remove this dose">remove</button></td></tr>');
       });
     }
     tbl.innerHTML = rows.join('');
@@ -484,12 +484,19 @@
       state.obs.forEach(function (o, i) {
         rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(fmtHoursClock(o.t)) +
           '</td><td class="num">' + esc(o.c) + (tac ? '</td><td class="num">' + (o.hct != null ? esc(o.hct) : '–') : '') +
-          '</td><td><button class="linklike no-print" data-del-obs="' + i + '" title="Remove this measurement">remove</button></td></tr>');
+          '</td><td><button type="button" class="linklike no-print" data-del-obs="' + i + '" title="Remove this measurement">remove</button></td></tr>');
       });
     }
     tbl.innerHTML = rows.join('');
   }
+  /* a delete re-renders the table and would drop keyboard focus to the page: put it on the next remove button, else the one before, else the entry field */
+  function focusAfterDelete(attr, idx, fallbackId) {
+    var btns = document.querySelectorAll ? document.querySelectorAll('[' + attr + ']') : [];
+    var target = btns[Math.min(idx, btns.length - 1)] || $(fallbackId);
+    if (target && target.focus) target.focus();
+  }
   function markStale() {
+    if (state.running) state.editedDuringRun = true;   // an edit while a fit runs: the finished fit no longer matches the form, even on a first run
     if (state.lastRun) $('staleBanner').classList.add('show');
     updateRunButtons();
     scheduleAutosave();
@@ -587,6 +594,26 @@
     }
     if (spec.intervalRange && input.intervalHours > 0 && !(input.intervalHours >= spec.intervalRange.min && input.intervalHours <= spec.intervalRange.max)) {
       out.push('The dosing interval is ' + input.intervalHours + ' h. This model covers ' + spec.intervalRange.text + '; other schedules (once-daily prolonged-release products, for example) behave differently, so the result would mislead.');
+    }
+    /* A mistimed or mistyped dose must not become an AUC: in full-schedule mode the interval is read off the last two doses and
+     * AUC0-tau = AUC0-x x tau/x extrapolates whatever gap that is (a dose entered 2 h after the previous one read as a 6-fold AUC with no warning).
+     * Drugs without a declared interval range (MPA) get the generic 4-48 h bound, and a last gap that departs from the history's own is refused. */
+    var intervalFlagged = false;
+    if (!spec.intervalRange && input.intervalHours > 0 && !(input.intervalHours >= 4 && input.intervalHours <= 48)) {
+      intervalFlagged = true;
+      out.push('The dosing interval is ' + Math.round(input.intervalHours * 10) / 10 + ' h' + (ssMode ? '' : ', read from the last two doses') + '. Intervals outside 4 to 48 h are not covered' + (ssMode ? '.' : '; check the dose times (a date or time typed wrongly?), or use “Steady state” mode.'));
+    }
+    if (!ssMode && !intervalFlagged) {   // one message per cause: an absurd interval already says the dose times are suspect
+      var dts = (input.doses || []).map(function (d) { return d.t; }).filter(isFinite).sort(function (a, b) { return a - b; });
+      if (dts.length >= 3) {
+        var gaps = [];
+        for (var gi = 1; gi < dts.length; gi++) gaps.push(dts[gi] - dts[gi - 1]);
+        var lastGap = gaps[gaps.length - 1], earlier = gaps.slice(0, -1).sort(function (a, b) { return a - b; });
+        var medGap = earlier.length % 2 ? earlier[(earlier.length - 1) / 2] : (earlier[earlier.length / 2 - 1] + earlier[earlier.length / 2]) / 2;
+        if (medGap > 0 && Math.abs(lastGap / medGap - 1) > 0.25) {
+          out.push('The last two doses are ' + Math.round(lastGap * 10) / 10 + ' h apart, but the earlier doses were about ' + Math.round(medGap * 10) / 10 + ' h apart. The AUC is scaled to the interval between the last two doses, so check the dose times, or use “Steady state” mode for a regular regimen.');
+        }
+      }
     }
     var extra = input.extra || {};
     (M.covariateFields ? M.covariateFields(spec.id) : []).forEach(function (c) {
@@ -725,7 +752,7 @@
   function exposureRows(label, stats, corr, win, winSet, unit, fit, subExtra) {
     var isAuc = /AUC/.test(label);
     return resultTileHtml({ key: isAuc ? 'auc' : 'trough', what: isAuc ? 'AUC' : 'trough', title: esc(label), unit: unit, stats: stats, corr: corr, informational: !isAuc && !hasBlood(M.spec(fit.drug)), judge: uiVal('windowOn', M.spec(fit.drug)),
-      win: (winSet && win && win.lo != null && win.hi != null) ? { lo: win.lo, hi: win.hi } : null, fit: fit, spec: M.spec(fit.drug), note: subExtra ? esc(subExtra.replace(/^ · /, '')) : '' });
+      win: (winSet && win && win.lo != null && win.hi != null) ? { lo: win.lo, hi: win.hi } : null, fit: fit, spec: M.spec(fit.drug), note: subExtra ? subExtra.replace(/^ · /, '') : '' });   // every part of subExtra is escaped where it is made (esc again here printed "&amp;amp;")
   }
   /* the lead tile is the one the drug's consensus works from (spec.report.lead), shown first */
   function orderTiles(spec) {
@@ -852,23 +879,28 @@
     $('runHint').className = 'run-hint';
     $('runHint').textContent = '';
     setProgress(0.02, 'Starting…');
+    state.editedDuringRun = false;
+    /* the report's view of the run is frozen with the input the fit uses: building it after the await read the live form, so a dose added
+     * or a mode flipped while the fit ran was printed next to a fit that never saw it */
+    var view = {
+      patientId: $('pt-code').value, weight: usesWeight() ? $('pt-wt').value : '',
+      form: currentForm(), win: windowBounds(), troughWin: troughBounds(), winSet: state.winSet, drug: $('pt-drug').value, extra: extraCovariates(),
+      doses: effectiveDoses().map(function (d) { var o = d.pred != null ? { t: d.t, amt: d.amt, route: d.route, pred: d.pred } : { t: d.t, amt: d.amt, route: d.route }; if (d.form) o.form = d.form; return o; }),
+      obs: state.obs.map(function (o) { return o.hct != null ? { t: o.t, c: o.c, hct: o.hct } : { t: o.t, c: o.c }; })
+    };
     var t0 = (root.performance && performance.now) ? performance.now() : Date.now();
     try {
       var fit = await B.runFit(input, { progress: function (f, msg) { setProgress(f, msg); }, cancelled: function () { return state.cancel; } });
       fit.runtimeMs = ((root.performance && performance.now) ? performance.now() : Date.now()) - t0;
       state.lastRun = fit;
       state.lastRunInputs = input;
-      state.lastRunView = {
-        patientId: $('pt-code').value, weight: usesWeight() ? $('pt-wt').value : '',
-        form: currentForm(), win: windowBounds(), troughWin: troughBounds(), winSet: state.winSet, drug: $('pt-drug').value, extra: extraCovariates(),
-        doses: effectiveDoses().map(function (d) { var o = d.pred != null ? { t: d.t, amt: d.amt, route: d.route, pred: d.pred } : { t: d.t, amt: d.amt, route: d.route }; if (d.form) o.form = d.form; return o; }),
-        obs: state.obs.map(function (o) { return o.hct != null ? { t: o.t, c: o.c, hct: o.hct } : { t: o.t, c: o.c }; })
-      };
-      clearStale();
+      state.lastRunView = view;
+      if (state.editedDuringRun) $('staleBanner').classList.add('show'); else clearStale();
       renderResults(fit);
       renderChart(fit);
       var d = effectiveDoses();
-      $('iv-amt').value = d.length ? d[d.length - 1].amt : $('iv-amt').value;
+      /* prefill the explorer with the latest dose, but never overwrite a candidate dose the user typed there */
+      if (d.length && ($('iv-amt').value === '' || $('iv-amt').value === state.ivAmtAuto)) { state.ivAmtAuto = String(d[d.length - 1].amt); $('iv-amt').value = state.ivAmtAuto; }
       updateRunButtons();
       toast('Forecast complete.');
     } catch (e) {
@@ -883,7 +915,19 @@
     }
   }
 
+  /* One scan at a time, and a scan belongs to the fit it started from: a double-click used to run two scans (the slower won), and a drug
+   * switch or new forecast while one ran was overwritten by the stale completion. */
   async function runExplorer() {
+    if (state.exploring || modelPending() || !state.lastRun) return;
+    var fitAtStart = state.lastRun;
+    state.exploring = true;
+    try { await runExplorerCore(); }
+    finally {
+      state.exploring = false;
+      if (state.lastRun !== fitAtStart) resetExplorer(state.lastRun);
+    }
+  }
+  async function runExplorerCore() {
     if (modelPending() || !state.lastRun) return;
     var amt = parseFloat($('iv-amt').value);
     if (!(amt > 0)) { $('iv-status').textContent = 'Enter a dose to explore.'; return; }
@@ -1002,6 +1046,7 @@
     if (p) { p.hidden = true; p.textContent = ''; }
     document.querySelectorAll('button.info[aria-expanded="true"]').forEach(function (b) {
       b.setAttribute('aria-expanded', 'false');
+      b.removeAttribute('aria-describedby');
     });
   }
 
@@ -1039,7 +1084,8 @@
       pop.textContent = text;
       pop.hidden = false;
       var r = b.getBoundingClientRect();
-      pop.style.left = Math.min(r.left, root.innerWidth - 340) + 'px';
+      pop.style.left = Math.max(8, Math.min(r.left, root.innerWidth - 340)) + 'px';   // never off the left edge on a narrow phone
+      b.setAttribute('aria-describedby', 'helpPop');
       pop.style.top = (r.bottom + 6 + root.scrollY) + 'px';
     });
   }
@@ -1235,8 +1281,11 @@
   }
   function applySession(o) {
     if (state.running) { toast('A forecast is running. Wait for it to finish before importing a session.'); return; }
+    var prevDrug = M.drug().id;
     try {
       if (!o || o.app !== 'mpa-tdm') throw new Error('Not a NephroTDM session file.');   // the file's app key stays 'mpa-tdm' so older sessions keep importing
+      if (!M.drugs[o.drug || 'mpa']) throw new Error('This session file is for a drug this version does not have (“' + String(o.drug).slice(0, 40) + '”).');
+      if ((state.doses.length || state.obs.length) && typeof root.confirm === 'function' && !root.confirm('Replace the case on screen with this session file? Its doses and measurements will be lost.')) return;
       M.select(o.drug || 'mpa');
       $('pt-drug').value = o.drug || 'mpa';
       var p = o.patient || {};
@@ -1251,7 +1300,14 @@
       var tw = o.troughWindow || {};
       $('pt-tlo').value = tw.lo != null ? tw.lo : '';
       $('pt-thi').value = tw.hi != null ? tw.hi : '';
-      state.winSet = typeof o.windowSet === 'string' ? o.windowSet : null;
+      /* the window set's label is printed in the report: trust the id only if the set exists for this drug and the bounds on screen are its own
+       * (a hand-edited file could otherwise print "Adult kidney, standard risk" beside bounds of 5 to 500) */
+      state.winSet = null;
+      if (typeof o.windowSet === 'string') {
+        var ws = (M.drug().windowSets || []).filter(function (x) { return x.id === o.windowSet; })[0];
+        var same = function (pair, lo, hi) { return !pair || (parseFloat(lo) === pair[0] && parseFloat(hi) === pair[1]); };
+        if (ws && same(ws.auc, w.lo, w.hi) && same(ws.trough, tw.lo, tw.hi)) state.winSet = ws.id;
+      }
       $('pt-form').value = o.formulation || 'mmf';
       $('pt-recency').value = o.recency || 'off';
       if (o.ss) {
@@ -1271,6 +1327,8 @@
       var censoredDropped = allObs.filter(function (x) { return x.lloq; }).length;
       state.obs = allObs.filter(function (x) { return !x.lloq && isFinite(x.t) && isFinite(x.c); })
         .map(function (x) { return x.hct != null && isFinite(x.hct) ? { t: x.t, c: x.c, hct: x.hct } : { t: x.t, c: x.c }; });
+      state.doses.sort(function (a, b) { return a.t - b.t; });   // the report and the fit read "the latest sample/dose" and the last two doses: a file need not be in time order
+      state.obs.sort(function (a, b) { return a.t - b.t; });
       var rp = o.report || {};
       $('rp-prepared').value = rp.prepared || '';
       $('rp-advice').value = rp.advice || '';
@@ -1292,10 +1350,12 @@
       state.lastRun = null; state.lastRunInputs = null; state.lastRunView = null;
       renderResults(null); renderChart(null);
       updateRunButtons();
+      scheduleAutosave();   // the imported case is now the case on screen: close the tab and it is the one offered back
       toast(censoredDropped
         ? 'Session imported: ' + censoredDropped + ' below-LLOQ sample' + (censoredDropped > 1 ? 's were' : ' was') + ' not imported (censored samples are no longer supported).'
         : 'Session imported.');
     } catch (e) {
+      try { M.select(prevDrug); } catch (e2) { /* keep the drug that was selected before the failed import */ }
       toast('Import failed: ' + (e && e.message ? e.message : e));
     }
   }
@@ -1335,6 +1395,7 @@
     bar.hidden = false;
     $('restoreYes').onclick = function () { applySession(o); bar.hidden = true; };
     $('restoreNo').onclick = function () {
+      if (typeof root.confirm === 'function' && !root.confirm('Discard the autosaved session? It is the only saved copy.')) return;
       try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) {}
       bar.hidden = true;
     };
@@ -1350,14 +1411,27 @@
 
   /* The printed report: one A4 page for every drug (src/report.js). Everything it shows is read from the run snapshot (state.lastRunView),
    * the inputs the forecast was produced from; the live fields are only the fallback when no forecast has been run. */
+  /* the printed sheet is built here, for the report button and for the browser's own print command (Ctrl/Cmd+P), which otherwise
+   * printed a blank page: the sheet is hidden until a report is asked for and the rest of the app is hidden in print */
+  /* an unambiguous report date (the browser's toLocaleString gave 06/10/2026 or 10/06/2026 by locale) */
+  function nowStamp() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
   function renderReport() {
+    var sheet = buildReportSheet();
+    root.print();
+    setTimeout(function () { resetReportSheet(sheet); }, 400);   // the element is held, not looked up again: the page may have changed by then
+  }
+  function resetReportSheet(sh) { sh = sh || $('reportSheet'); if (!sh) return; sh.hidden = true; sh.style.zoom = ''; }
+  function buildReportSheet() {
     var fit = state.lastRun;
     var view = fit ? state.lastRunView : null;
     var spec = M.spec(fit ? fit.drug : M.drug().id);
     var inputsChanged = !!(fit && $('staleBanner').classList.contains('show'));
     var form = view ? view.form : currentForm();
     var ctx = {
-      fit: fit, spec: spec, inputsChanged: inputsChanged, version: VERSION, now: new Date().toLocaleString(),
+      fit: fit, spec: spec, inputsChanged: inputsChanged, version: VERSION, now: nowStamp(),
       patientId: view ? view.patientId : $('pt-code').value,
       weight: view ? view.weight : $('pt-wt').value,
       usesWeight: usesWeight(spec), form: form, formLabel: spec.FORMS ? formLabel(form) : '',
@@ -1378,10 +1452,9 @@
     sheet.hidden = false;
     /* paper size is not known to Safari (it prints on Letter, 1056 px): a report taller than 1000 px is scaled down to fit one page, with headroom for the printer's own rounding */
     var pg = sheet.firstElementChild, ph = 0;
-    if (pg) { pg.style.minHeight = '0'; ph = pg.offsetHeight; pg.style.minHeight = ''; }
+    if (pg) { pg.style.minHeight = '0'; pg.style.width = '210mm'; ph = pg.offsetHeight; pg.style.minHeight = ''; pg.style.width = ''; }   // measured at the printed width: below 820 px the page is fluid on screen
     sheet.style.zoom = ph > 1000 ? String(1000 / ph) : '';
-    root.print();
-    setTimeout(function () { sheet.hidden = true; sheet.style.zoom = ''; }, 400);
+    return sheet;
   }
   /* the cautions that must travel with the numbers: sampling convergence, a short or single-dose history, weak information, EC-MPS anchoring */
   function reportNotes(fit, spec) {
@@ -1592,16 +1665,19 @@
     document.addEventListener('click', function (ev) {
       var delD = ev.target.closest ? ev.target.closest('[data-del-dose]') : null;
       if (delD) {
-        state.doses.splice(parseInt(delD.getAttribute('data-del-dose'), 10), 1);
-        renderDoseTable(); markStale(); return;
+        var di = parseInt(delD.getAttribute('data-del-dose'), 10);
+        state.doses.splice(di, 1);
+        renderDoseTable(); markStale(); focusAfterDelete('data-del-dose', di, 'dose-dt'); return;
       }
       var delO = ev.target.closest ? ev.target.closest('[data-del-obs]') : null;
       if (delO) {
-        state.obs.splice(parseInt(delO.getAttribute('data-del-obs'), 10), 1);
-        renderObsTable(); markStale(); return;
+        var oi = parseInt(delO.getAttribute('data-del-obs'), 10);
+        state.obs.splice(oi, 1);
+        renderObsTable(); markStale(); focusAfterDelete('data-del-obs', oi, 'obs-dt'); return;
       }
     });
     $('tplClear').addEventListener('click', function () {
+      if ((state.doses.length || state.obs.length) && typeof root.confirm === 'function' && !root.confirm('Remove all doses and measurements?')) return;
       state.doses = []; state.obs = [];
       renderDoseTable(); renderObsTable(); markStale();
     });
@@ -1613,6 +1689,8 @@
     $('iv-run').addEventListener('click', runExplorer);
     $('logY').addEventListener('change', function () { if (state.lastRun) renderChart(state.lastRun); });
     var wasNarrow = isNarrow();
+    root.addEventListener('beforeprint', function () { if ($('reportSheet').hidden) buildReportSheet(); });   // Ctrl/Cmd+P without the report button
+    root.addEventListener('afterprint', function () { resetReportSheet(); });
     root.addEventListener('resize', function () {          // rotating a phone crosses the breakpoint: redraw the chart once
       var n = isNarrow();
       if (n !== wasNarrow) { wasNarrow = n; if (state.lastRun) renderChart(state.lastRun); }
@@ -1649,6 +1727,10 @@
   ECU.ui = {
     autosaveExpired: autosaveExpired,
     state: state,
+    markStale: markStale,
+    runForecast: runForecast,
+    runExplorer: runExplorer,
+    buildReportSheet: buildReportSheet,
     effectiveDoses: effectiveDoses,
     buildRunInput: buildRunInput,
     validateRun: validateRun,

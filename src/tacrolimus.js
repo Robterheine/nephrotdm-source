@@ -243,7 +243,9 @@
     });
     var ex = Object.assign({}, ex0, { nOcc: occDays.length, nSampled: nSampled, occDays: occDays });
     // the haematocrit the reported (actual) value refers to: the latest sample's, else the patient field
-    var hctReport = obs.length ? obs[obs.length - 1].hct : (isFinite(ex0.hct) ? ex0.hct : 0.33);
+    var latest = null;                               // the latest sample by time (the input order is not trusted; a session import need not be sorted)
+    obs.forEach(function (o) { if (!latest || o.t >= latest.t) latest = o; });
+    var hctReport = latest ? latest.hct : (isFinite(ex0.hct) ? ex0.hct : 0.33);
     return { extra: ex, doses: doses, obs: obs, assay: ex0.assay || 'lcms', hctReport: hctReport };
   }
 
@@ -402,7 +404,7 @@
       'CYP3A5 genotype unknown is treated as a non-expresser (no mixture). Expression changes clearance by +30 % and bioavailability by −18 %',
       'Variability from the paper’s Table 2 (CVs, read as ω = CV; correlations CL–V1 0.43 and CL–Q 0.62). The V1–Q correlation is not published and is taken as the product of the other two (0.27)',
       'Occasion = calendar day. Each sampled day (up to the 12 most recent) gets its own effect on bioavailability and on the absorption rate; days without a sample are taken at zero',
-      'Assay: LC-MS/MS, or Abbott CMIA via the model authors’ conversion (one laboratory, 43 pairs); other immunoassays cannot be used. The immunoassay line is valid for 3.6–14.4 µg/L',
+      'Assay: LC-MS/MS, or Abbott CMIA via the model authors’ conversion (one laboratory, 43 pairs); other immunoassays cannot be used. The immunoassay line is valid for 3.6–14.4 µg/L. A converted CMIA value is fitted with the same 14.9 % proportional error as an LC-MS/MS value; the scatter of the conversion itself is not added',
       'Not in the model: renal and liver function, age (bioavailability rises 1.4 %/year above 45 in the data but the effect was left out as empirical), CYP3A inhibitors and inducers, food, adherence. The AUC was never evaluated externally in the source study (its external evaluation used troughs in the first three weeks)',
       'Estimated with NONMEM FOCE-I'
     ],

@@ -134,17 +134,17 @@ function winAUC(form, amt, t0, mixIdx) {
 
 t('V4: SS golden anchors — MMF per-window mass balance; EC-MPS 24h balance', function () {
   // MMF absorption is 12h-periodic → every 12h window carries exactly one dose:
-  near(ssAnchor('mmf', 739), GOLDEN.mmf1000AUC12.auc, GOLDEN.mmf1000AUC12.auc * 0.02,
-    'MMF 1000 mg → 739 mg MPA → AUC12 = 739/16 ≈ 46.19 within ±2%');
+  near(ssAnchor('mmf', 739), GOLDEN.mmf1000AUC12.auc, GOLDEN.mmf1000AUC12.auc * GOLDEN.mmf1000AUC12.toleranceFrac,
+    'MMF 1000 mg → 739 mg MPA → AUC12 = 739/16 ≈ 46.19 to 5e-4');
   // EC-MPS absorption is 24h-periodic (evening dose absorbs at clock ~05) →
   // the exact invariant is the 24h sum; single windows are golden-recorded.
   var eve = winAUC('ecmps', 674, 356);
   var mor = winAUC('ecmps', 674, 368);
-  near(mor, GOLDEN.ecmps720MorningAUC12.auc, GOLDEN.ecmps720MorningAUC12.auc * 0.02,
+  near(mor, GOLDEN.ecmps720MorningAUC12.auc, GOLDEN.ecmps720MorningAUC12.auc * GOLDEN.ecmps720MorningAUC12.toleranceFrac,
     'EC-MPS morning-anchored window matches the golden record');
-  near(eve, GOLDEN.ecmps720EveningAUC12.auc, GOLDEN.ecmps720EveningAUC12.auc * 0.02,
+  near(eve, GOLDEN.ecmps720EveningAUC12.auc, GOLDEN.ecmps720EveningAUC12.auc * GOLDEN.ecmps720EveningAUC12.toleranceFrac,
     'EC-MPS evening-anchored window matches the golden record');
-  near(eve + mor, GOLDEN.ecmps24hBalance.sum, GOLDEN.ecmps24hBalance.sum * 0.02,
+  near(eve + mor, GOLDEN.ecmps24hBalance.sum, GOLDEN.ecmps24hBalance.sum * GOLDEN.ecmps24hBalance.toleranceFrac,
     '24h mass balance: morning + evening = 2 × 674/16 = 84.25 (the exact invariant)');
 });
 
@@ -825,7 +825,7 @@ t('V15: S12 auto-anchor — evening-ending EC-MPS schedules report the morning w
   truthy(r, 'scan returned a row');
   truthy(r.anchorShifted, 'scan row carries the shift flag');
   near(r.aucT0, 368, 1e-9, 'scan window anchored at the morning dose');
-  near(r.auc.median, GOLDEN.ecmps720MorningAUC12.auc, GOLDEN.ecmps720MorningAUC12.auc * 0.02,
+  near(r.auc.median, GOLDEN.ecmps720MorningAUC12.auc, GOLDEN.ecmps720MorningAUC12.auc * GOLDEN.ecmps720MorningAUC12.toleranceFrac,
     'evening-ending scan reports the morning-anchored golden (~45.26), not the evening window (~38.95)');
 });
 

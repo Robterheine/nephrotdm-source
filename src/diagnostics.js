@@ -12,7 +12,7 @@
   'use strict';
   var ECU = root.ECU = root.ECU || {};
 
-  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function fmtC(v) {
     if (!isFinite(v)) return '–';
     if (v >= 100) return String(Math.round(v));
@@ -207,7 +207,8 @@
   }
   function quantileOf(sorted, q) {
     if (!sorted.length) return NaN;
-    return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
+    var pos = q * (sorted.length - 1), lo = Math.floor(pos), hi = Math.ceil(pos);   // linear interpolation, as bayes.js quantileSorted (the printed results)
+    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
   }
 
   /* Full modal body for the “Fit diagnostics” dialog. Pure string builder —

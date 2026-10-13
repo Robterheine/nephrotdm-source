@@ -16,20 +16,20 @@
     <h1><span id="appName">NephroTDM</span> <span class="appver" id="titleVersion" title="Application version"></span></h1>
   </div>
   <nav class="nav" aria-label="Help">
-    <button id="btnGettingStarted" title="A short, step-by-step walkthrough for first-time use, opened in its own window">Getting started</button>
-    <button id="btnBackground" title="Why therapeutic drug monitoring, reference values, model-based estimation and sampling advice for the selected drug">Background</button>
-    <button id="btnAbout" title="Version, model documentation, contact and research-use disclaimer">About</button>
+    <button type="button" id="btnGettingStarted" title="A short, step-by-step walkthrough for first-time use, opened in its own window">Getting started</button>
+    <button type="button" id="btnBackground" title="Why therapeutic drug monitoring, reference values, model-based estimation and sampling advice for the selected drug">Background</button>
+    <button type="button" id="btnAbout" title="Version, model documentation, contact and research-use disclaimer">About</button>
   </nav>
   <div class="actions">
     <details class="menu">
       <summary title="Save, restore or clear this session">Session</summary>
       <div class="menu-pop">
-        <button id="btnExport" title="Download this session as a JSON file (pseudonym only, no identifiers required)">Export session</button>
-        <button id="btnImport" title="Restore a previously exported session">Import session</button>
-        <button id="btnClearSession" class="danger" title="Delete the autosaved copy kept in this browser and empty this page. Exported session files are not affected.">Clear session</button>
+        <button type="button" id="btnExport" title="Download this session as a JSON file (pseudonym only, no identifiers required)">Export session</button>
+        <button type="button" id="btnImport" title="Restore a previously exported session">Import session</button>
+        <button type="button" id="btnClearSession" class="danger" title="Delete the autosaved copy kept in this browser and empty this page. Exported session files are not affected.">Clear session</button>
       </div>
     </details>
-    <button id="btnPrint" title="Generate an A4 report of this patient, dosing schedule, samples, AUC estimate and advice, with prepared-by and signature lines">Print report</button>
+    <button type="button" id="btnPrint" title="Generate an A4 report of this patient, dosing schedule, samples, AUC estimate and advice, with prepared-by and signature lines">Print report</button>
     <input type="file" id="importFile" accept=".json" style="display:none">
   </div>
   <div class="sub" id="appSub">Model-informed therapeutic drug monitoring for kidney transplantation and nephrology. Choose a drug, enter the dosing and any measured concentrations, and the app estimates the patient’s exposure with its uncertainty and shows what a different dose would do. Everything runs locally in your browser: nothing you enter is sent or processed online. The only copy is an autosave in this browser.</div>
@@ -40,8 +40,8 @@
   <div class="restore-bar no-print" id="restoreBar" role="status" hidden>
     <span id="restoreText"></span>
     <span class="restore-actions">
-      <button class="primary" id="restoreYes" title="Load the autosaved doses and measurements back into the form">Restore</button>
-      <button id="restoreNo" title="Discard the autosaved session and start empty">Discard</button>
+      <button type="button" class="primary" id="restoreYes" title="Load the autosaved doses and measurements back into the form">Restore</button>
+      <button type="button" id="restoreNo" title="Discard the autosaved session and start empty">Discard</button>
     </span>
   </div>
 
@@ -50,7 +50,7 @@
     <a class="step" href="#chartCard" data-step="dose"><i>2</i> Dosing &amp; samples</a>
     <a class="step" href="#resultsCard" data-step="run"><i>3</i> Forecast</a>
     <a class="step" href="#regimenCard" data-step="explore"><i>4</i> Explore dose (optional)</a>
-    <button class="linklike" id="stepperDismiss" title="Hide this guide">dismiss</button>
+    <button type="button" class="linklike" id="stepperDismiss" title="Hide this guide">dismiss</button>
   </div>
 
   <div class="workspace">
@@ -161,7 +161,7 @@
   <div class="card" id="chartCard">
     <h2><span class="stepnum">2</span> Dosing schedule &amp; measured concentrations</h2>
 
-    <div class="seg no-print" id="modeSeg" title="Choose how the dosing schedule is entered">
+    <div class="seg no-print" id="modeSeg" role="radiogroup" aria-label="How the dosing schedule is entered" title="Choose how the dosing schedule is entered">
       <label class="seg-opt" title="Enter each dose as a dated timeline">
         <input type="radio" name="schedMode" value="full" checked> Full schedule (history)</label>
       <label class="seg-opt" title="Patient at steady state on a fixed maintenance dose + interval">
@@ -188,10 +188,10 @@
         <div id="ssFormWrap" style="display:none"><label class="f" for="ss-form">Formulation</label><select id="ss-form" title="The formulation of the regimen (every dose of the stable regimen is given in this form)."></select></div>
         <div class="f-dt"><label class="f" for="ss-anchor">Latest dose on</label><input type="datetime-local" id="ss-anchor" title="Date and time of the most recent administration; this anchors the forecast"></div>
       </div>
-      <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”.</div>
+      <div class="legend-note" style="margin-top:6px">The app uses the exact periodic steady state of this regimen, ending with the latest dose. Time on the chart is in hours, with t = 0 h at the latest dose. To enter a dosing history that changed over time, switch to “Full schedule”. The regimen is taken to have run for a limited number of doses before the latest one (30 doses for mycophenolic acid and tacrolimus, 10 for everolimus), so a sample older than that is refused as “before the first dose”: use “Full schedule” for such samples.</div>
     </div>
 
-    <h2 class="sub-h" style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px"><span>Measured concentrations <span class="hint" id="sampleHint"></span></span><button class="linklike" id="tplClear" style="margin-left:auto" title="Remove all doses and measurements">clear all</button></h2>
+    <h2 class="sub-h" style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px"><span>Measured concentrations <span class="hint" id="sampleHint"></span></span><button type="button" class="linklike" id="tplClear" style="margin-left:auto" title="Remove all doses and measurements">clear all</button></h2>
     <div class="note no-print" id="tacDoseNote" hidden>Immediate-release tacrolimus, twice daily (Prograf-type capsules). Prolonged-release products (once daily) are not covered by this model.</div>
     <div class="note warn no-print" id="ecmpsSampleNote" hidden>EC-MPS: absorption is delayed and highly variable, the source model’s own conclusion is that sparse limited sampling is expected to be unreliable for EC-MPS. Prefer more samples spread across the dosing interval (e.g. 1.5, 2, 4, 6, 8 h), and treat trough-only results with particular caution.</div>
     <div class="tbl-wrap"><table class="data" id="obsTable"></table></div>
@@ -227,10 +227,10 @@
     <h2><span class="stepnum">3</span> Forecast</h2>
     <div class="stale-banner" id="staleBanner">Inputs changed. Press “Run forecast” to update.</div>
     <div class="actions-inline no-print" id="runBar">
-      <button class="primary" id="btnRun" style="flex:1" title="Run the Bayesian individualization and refresh the plot, AUC estimate, trough and advisories">Run forecast</button>
-      <button class="secondary" id="btnDiag" disabled title="Inspect how well the fitted model explains this patient’s samples: observed vs individual prediction, residuals, parameter ranges, shrinkage and MCMC quality. Available after a forecast has run.">Fit diagnostics</button>
+      <button type="button" class="primary" id="btnRun" style="flex:1" title="Run the Bayesian individualization and refresh the plot, AUC estimate, trough and advisories">Run forecast</button>
+      <button type="button" class="secondary" id="btnDiag" disabled title="Inspect how well the fitted model explains this patient’s samples: observed vs individual prediction, residuals, parameter ranges, shrinkage and MCMC quality. Available after a forecast has run.">Fit diagnostics</button>
     </div>
-    <div class="run-hint" id="runHint"></div>
+    <div class="run-hint" id="runHint" role="alert" aria-live="assertive"></div>
     <div class="progress-wrap" id="progress">
       <div class="bar"><div id="progressBar"></div></div>
       <div class="msg" id="progressMsg"></div>
@@ -284,7 +284,7 @@
         <option value="12" selected>12 h (twice daily)</option>
         <option value="24">24 h (once daily)</option>
       </select>
-      <button class="secondary" id="iv-run" title="Evaluate candidate doses using this patient's fitted parameters" disabled>Explore</button>
+      <button type="button" class="secondary" id="iv-run" title="Evaluate candidate doses using this patient's fitted parameters" disabled>Explore</button>
       <span class="hint" id="iv-status"></span>
     </div>
     <div id="iv-out"><div class="note">Run a forecast in card 3 first. This explorer reuses that fit's own parameters.</div></div>
@@ -298,7 +298,7 @@
 <!-- Fit diagnostics dialog -->
 <div class="modal-backdrop" id="diagModal" hidden>
   <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="diagTitle">
-    <button class="modal-close" id="diagClose" title="Close">×</button>
+    <button type="button" class="modal-close" id="diagClose" title="Close">×</button>
     <h2 id="diagTitle">Fit diagnostics</h2>
     <div id="diagModalBody"></div>
   </div>
@@ -311,7 +311,7 @@
 
 <div class="modal-backdrop" id="gettingStartedModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gettingStartedTitle">
-    <button class="modal-close" id="gettingStartedClose" title="Close">×</button>
+    <button type="button" class="modal-close" id="gettingStartedClose" title="Close">×</button>
     <h2 id="gettingStartedTitle">Getting started</h2>
     <div id="gettingStartedBody"></div>
   </div>
@@ -319,7 +319,7 @@
 
 <div class="modal-backdrop" id="backgroundModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="backgroundTitle">
-    <button class="modal-close" id="backgroundClose" title="Close">×</button>
+    <button type="button" class="modal-close" id="backgroundClose" title="Close">×</button>
     <h2 id="backgroundTitle">Background</h2>
     <div id="backgroundBody"></div>
   </div>
@@ -327,7 +327,7 @@
 
 <div class="modal-backdrop" id="aboutModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
-    <button class="modal-close" id="aboutClose" title="Close">×</button>
+    <button type="button" class="modal-close" id="aboutClose" title="Close">×</button>
     <h2 id="aboutTitle">About this app</h2>
     <div id="aboutBody"></div>
   </div>
@@ -335,7 +335,7 @@
 
 <div class="modal-backdrop" id="reportModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
-    <button class="modal-close" id="reportClose" title="Close">×</button>
+    <button type="button" class="modal-close" id="reportClose" title="Close">×</button>
     <h2 id="reportTitle">Generate report</h2>
     <p class="src">The report prints the current patient data, the last <b>run</b> forecast, model findings and the fields below. Both fields are optional and are kept in the session (and in exported session files) until you change them.</p>
     <label class="f" for="rp-prepared">Prepared by (name, role)</label>
@@ -345,8 +345,8 @@
     <textarea id="rp-advice" rows="5" placeholder="e.g. Repeat the AUC after a change."
       title="Your advice for the treating clinician. The model findings are printed separately above it. The advice itself is yours."></textarea>
     <div class="actions-inline" style="margin-top:14px;display:flex;gap:8px">
-      <button class="primary" id="rp-generate" style="flex:1" title="Build the report sheet and open the print dialog">Generate report</button>
-      <button class="secondary" id="rp-cancel" title="Close without printing">Cancel</button>
+      <button type="button" class="primary" id="rp-generate" style="flex:1" title="Build the report sheet and open the print dialog">Generate report</button>
+      <button type="button" class="secondary" id="rp-cancel" title="Close without printing">Cancel</button>
     </div>
   </div>
 </div>

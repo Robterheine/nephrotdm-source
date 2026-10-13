@@ -169,7 +169,9 @@
       obs.push({ t: o.t, c: o.c, cDisp: o.c, hct: hct });
     });
     // the haematocrit the reported (actual) value refers to, and the one the PK path uses: the latest sample's, else the patient field
-    var hctReport = obs.length ? obs[obs.length - 1].hct : ex0.hct;
+    var latest = null;                               // the latest sample by time (the input order is not trusted; a session import need not be sorted)
+    obs.forEach(function (o) { if (!latest || o.t >= latest.t) latest = o; });
+    var hctReport = latest ? latest.hct : ex0.hct;
     var ex = Object.assign({}, ex0, { hct: hctReport, nOcc: 0, nSampled: 0, occDays: [] });
     return { extra: ex, doses: doses, obs: obs, assay: 'lcms', hctReport: hctReport };
   }

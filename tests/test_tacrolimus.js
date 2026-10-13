@@ -491,7 +491,7 @@ t('copy: text shared by all drugs names no drug, is not stale, and a drug withou
     truthy(t && t.length > 40, id + ' exists');
     falsy(drugWords.test(t), id + ' must not name a drug: ' + t.slice(0, 80));
   });
-  var btn = html.match(/<button id="btnBackground" title="([^"]*)">([^<]*)<\/button>/);
+  var btn = html.match(/<button (?:type="button" )?id="btnBackground" title="([^"]*)">([^<]*)<\/button>/);
   falsy(drugWords.test(btn[1] + btn[2]), 'the background button is neutral until the drug sets its label');
   falsy(/simulated back over a fixed number of intervals/.test(html), 'steady state is exact since 1.1.0; the old sentence is false');
   truthy(/Everything runs locally/.test(html) && /autosave/.test(html), 'the subtitle states where the data stay, including the autosave');

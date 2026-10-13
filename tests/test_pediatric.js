@@ -772,6 +772,7 @@ t('U4: scope warnings reach the screen and the report through the spec — weigh
 // regression records (bit-identity): fixed-seed fits equal the recorded baselines exactly. Cases: tools/ped_regression_cases.mjs; recorder:
 // tools/record_ped_regression.mjs. Re-record only for an intended change to the numbers, and say why in the release notes.
 // ---------------------------------------------------------------------------
+// NOTE: this loop registers two tests (one per drug), so a static count of `t(` calls in this file is two lower than the number that run.
 ['mpaped', 'tacped'].forEach(function (drug) {
   t('V16-' + drug + ' (regression): fixed-seed ' + drug + ' fits and the dose scan equal the recorded baseline exactly', async function () {
     var rec = JSON.parse(fs.readFileSync(path.join(__dirname, drug + '_regression.json'), 'utf8')), C = (await import('../tools/ped_regression_cases.mjs')).pedCases(M), cases = C[drug], blood = drug === 'tacped', f1 = null;
@@ -911,5 +912,5 @@ t('U8: placeholders and the weight step come from the specs only (covariate fiel
 });
 
 if (require.main === module) {
-  h.runAll().then(function (ok) { process.exit(ok ? 0 : 1); });
+  h.runAll().then(function (ok) { if (!ok) process.exit(1); }).catch(function (e) { console.error(e); process.exit(1); });   // the same tail as the other five suites
 }

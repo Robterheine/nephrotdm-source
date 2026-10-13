@@ -288,7 +288,8 @@
       }
       if (dec < 1e-12 && gn < 1e-3) { converged = true; break; }
     }
-    return { x: x, f: fx, ok: true, iters: iter, converged: converged || iter < 400 };
+    /* only a gradient or step that met the tolerance counts: an early break on a NaN gradient used to report converged (iter < 400) */
+    return { x: x, f: fx, ok: true, iters: iter, converged: converged };
   }
 
   function choleskyDecomp(A) {
@@ -454,7 +455,7 @@
    * eta (V2, TLAG_EVE) does not fail the bar: the calibration study found those
    * failing in up to half the fits while the AUC matched the independent reference
    * to 0.4 pp. Chains are trimmed to the shortest so the split is even. */
-  function fitConvergence(draws, chainLens, auc12, troughs, winLo, winHi, nEta, etaNames) {
+  function fitConvergence(draws, chainLens, auc12, troughs, winLo, winHi, nEta, etaNames, windowSeries) {
     if (!chainLens || !chainLens.length) return null;
     var starts = [], acc = 0, lens = [];
     chainLens.forEach(function (l) { starts.push(acc); acc += l; if (l >= 4) lens.push(l); });
@@ -478,9 +479,14 @@
     }
     var la = stat(function (i) { return Math.log(auc12[i]); });
     var lt = stat(function (i) { return Math.log(troughs[i]); });
-    var ind = stat(function (i) { return auc12[i] > winLo && auc12[i] < winHi ? 1 : 0; });
-    var rhat = Math.max.apply(null, [la.rhat, lt.rhat].filter(isFinite));
-    var essMin = Math.min.apply(null, [la.ess, lt.ess].filter(isFinite));
+    var judged = windowSeries || auc12;   // the series the printed probability is judged on (the haematocrit-corrected AUC for pediatric tacrolimus)
+    var ind = stat(function (i) { return judged[i] > winLo && judged[i] < winHi ? 1 : 0; });
+    /* A quantity whose draws are not all finite has no R̂/ESS. Dropping it (the old filter) judged the fit on whatever was left,
+     * and with both gone Math.max([]) = −∞ and Math.min([]) = +∞ passed the gate while every printed number was "–". No
+     * statistic means no convergence claim. */
+    var printedStats = [la.rhat, lt.rhat, la.ess, lt.ess], statsOk = printedStats.every(isFinite);
+    var rhat = statsOk ? Math.max(la.rhat, lt.rhat) : NaN;
+    var essMin = statsOk ? Math.min(la.ess, lt.ess) : NaN;
     return {
       rhat: rhat, essMin: essMin, essIn: ind.ess,
       rhatEta: rhatEta, essEta: essEta, etaSlow: etaSlow,
@@ -789,6 +795,11 @@
     if ((input.obs || []).some(function (o) { return o.lloq; })) {
       throw new Error('Samples reported below the limit of quantification (“< LLOQ”) are not supported. Omit them; do not enter zero or the LLOQ as a concentration.');
     }
+    // Inverted or empty window bounds read as a dire clinical result (P(in window) = 0), not as an input error: refuse them here, before any sampling.
+    [['winLo', 'winHi', 'AUC window'], ['troughLo', 'troughHi', 'trough window']].forEach(function (pr) {
+      var lo = input[pr[0]], hi = input[pr[1]];
+      if (lo != null && hi != null && isFinite(lo) && isFinite(hi) && !(lo < hi)) throw new Error('The lower ' + pr[2] + ' bound must be below the upper bound.');
+    });
     var prog0 = cb && cb.progress ? cb.progress : function () {};
     // cb.cancelled() is polled at every progress report (every ~200 MCMC iterations); a true answer ends the fit with a cancellation error.
     var prog = function (f, msg) {
@@ -1061,7 +1072,8 @@
       else { winLo = s.windowRange.min; winHi = s.windowRange.max; }
     }
     var cLo = windowSet ? winLo : 0, cHi = windowSet ? winHi : Infinity;   // convergence indicator needs finite bounds
-    var convergence = fitConvergence(draws, chainLens, auc12, troughs, cLo, cHi, dim, etaNames);
+    var judgedSeries = (custom && s.ui && s.ui.windowOn === 'corrected' && aucsCorr) ? aucsCorr.map(function (a) { return isFinite(a) ? (a / intervalHours) * NORM_H : NaN; }) : null;
+    var convergence = fitConvergence(draws, chainLens, auc12, troughs, cLo, cHi, dim, etaNames, judgedSeries);
 
     var mapEta = mapRes ? mapRes.x : zeros(dim);
     var params = M.indivParams(wt, age, renal, extra, mapEta, drug, form, mapMix);
