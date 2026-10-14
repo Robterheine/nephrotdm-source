@@ -9,5 +9,5 @@
 (function (root) {
   'use strict';
   var ECU = root.ECU = root.ECU || {};
-  ECU.VERSION = '1.5.1';
+  ECU.VERSION = '1.5.2';
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NephroTDM</title>
-<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-13 08:31 UTC) -->
+<!-- Built single-file artifact: nephrotdm.html (build: 2026-10-14 11:26 UTC) -->
 <style>
 /* fonts.css (inlined) */
 /* IBM Plex Sans (one variable file, weights 400 to 600) and IBM Plex Mono (500, 600), Latin subset, embedded so the single offline file looks the same everywhere.
@@ -987,7 +987,7 @@ html { scroll-behavior: smooth; }
 (function (root) {
   'use strict';
   var ECU = root.ECU = root.ECU || {};
-  ECU.VERSION = '1.5.1';
+  ECU.VERSION = '1.5.2';
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -6287,6 +6287,42 @@ html { scroll-behavior: smooth; }
 
 </script>
 <script>
+/* src/visits.js (inlined) */
+/* =========================================================================
+ * NephroTDM visit counter: one page view, counted as a 1-pixel image request to GoatCounter (cookie-free, no script from a third party runs
+ * in this page). It fires only on the published site (https://robterheine.github.io); a downloaded copy opened from disk, on localhost or
+ * on any other host sends nothing and shows nothing. What is sent: the page ("/") and the site the visitor came from (origin only).
+ * Never sent: anything typed into the app, the URL's query or hash, cookies. Do Not Track and Global Privacy Control switch it off.
+ * ========================================================================= */
+(function (root) {
+  'use strict';
+  var ECU = root.ECU = root.ECU || {};
+  var COUNTER = 'https://nephrotdm.goatcounter.com/count', HOST = 'robterheine.github.io';
+
+  function url(loc, nav, doc) {
+    if (!loc || loc.protocol !== 'https:' || loc.hostname !== HOST) return null;
+    if (nav && (nav.doNotTrack === '1' || nav.globalPrivacyControl === true)) return null;
+    var ref = '';
+    try { if (doc && doc.referrer) ref = new URL(doc.referrer).origin; } catch (e) { ref = ''; }
+    return COUNTER + '?p=' + encodeURIComponent('/') + (ref && ref !== 'null' ? '&r=' + encodeURIComponent(ref) : '');
+  }
+
+  function ping(win) {
+    try {
+      var u = url(win.location, win.navigator, win.document);
+      if (!u || typeof win.Image !== 'function') return false;
+      var img = new win.Image();
+      img.onerror = function () {};   // blocked by an ad blocker or offline: nothing to show
+      img.src = u;
+      return true;
+    } catch (e) { return false; }
+  }
+
+  ECU.visits = { url: url, ping: ping };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* src/ui.js (inlined) */
 /* =========================================================================
  * MPA TDM — application shell
@@ -7439,6 +7475,7 @@ html { scroll-behavior: smooth; }
   function aboutSharedHtml() {
     return '<h3>Privacy</h3>' +
       '<p>The page runs locally in your browser. Nothing you enter is sent to a server or processed online. The app keeps one autosaved copy of the current session in this browser’s local storage, only so it can offer to restore it after an accidental close; it is dropped after 24 hours, and “Clear session” at the top of the page (or “Discard” in the restore bar) removes it at once. Exported session files stay wherever you save them.</p>' +
+      '<p>On the published website (robterheine.github.io) one anonymous page view is counted with GoatCounter, which sets no cookies. It receives the page and the site you came from, never anything you enter. A downloaded copy sends nothing, and a “Do Not Track” setting in your browser switches the count off.</p>' +
       '<h3>Research use only</h3>' +
       '<p><b>For research purposes only, not for routine clinical use.</b> NephroTDM is not a certified medical device, and none of its models has been clinically validated by this project. Validate against prospective data before routine use. Interpretation needs clinical judgement and local protocols.</p>' +
       '<p>The app never recommends, selects or optimizes a dose. It estimates exposure with its uncertainty and lets you explore what a candidate maintenance dose would do. That decision stays yours.</p>';
@@ -7990,6 +8027,7 @@ html { scroll-behavior: smooth; }
   }
 
   function init() {
+    if (ECU.visits) ECU.visits.ping(root);   // one page view on the published site only (src/visits.js); nothing offline
     document.title = 'NephroTDM v' + VERSION;
     $('titleVersion').textContent = 'v' + VERSION;
     $('footerVersion').textContent = VERSION;

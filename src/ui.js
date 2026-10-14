@@ -1149,6 +1149,7 @@
   function aboutSharedHtml() {
     return '<h3>Privacy</h3>' +
       '<p>The page runs locally in your browser. Nothing you enter is sent to a server or processed online. The app keeps one autosaved copy of the current session in this browser’s local storage, only so it can offer to restore it after an accidental close; it is dropped after 24 hours, and “Clear session” at the top of the page (or “Discard” in the restore bar) removes it at once. Exported session files stay wherever you save them.</p>' +
+      '<p>On the published website (robterheine.github.io) one anonymous page view is counted with GoatCounter, which sets no cookies. It receives the page and the site you came from, never anything you enter. A downloaded copy sends nothing, and a “Do Not Track” setting in your browser switches the count off.</p>' +
       '<h3>Research use only</h3>' +
       '<p><b>For research purposes only, not for routine clinical use.</b> NephroTDM is not a certified medical device, and none of its models has been clinically validated by this project. Validate against prospective data before routine use. Interpretation needs clinical judgement and local protocols.</p>' +
       '<p>The app never recommends, selects or optimizes a dose. It estimates exposure with its uncertainty and lets you explore what a candidate maintenance dose would do. That decision stays yours.</p>';
@@ -1700,6 +1701,7 @@
   }
 
   function init() {
+    if (ECU.visits) ECU.visits.ping(root);   // one page view on the published site only (src/visits.js); nothing offline
     document.title = 'NephroTDM v' + VERSION;
     $('titleVersion').textContent = 'v' + VERSION;
     $('footerVersion').textContent = VERSION;
